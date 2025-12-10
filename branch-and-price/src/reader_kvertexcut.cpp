@@ -161,8 +161,8 @@ SCIP_DECL_READERREAD(readerReadKvc)
             break;
          }
 
-         tail[nedges_read] = u;
-         head[nedges_read] = v;
+         tail[nedges_read] = u-1;
+         head[nedges_read] = v-1;
          nedges_read++;
 
          SCIPdebugMsg(scip, "edge %d: (%d, %d)\n", nedges_read, u, v);

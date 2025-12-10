@@ -22,42 +22,34 @@
 /*                                                                           */
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-/**@file   pricer_kvertexcut.h
- * @brief  k-vertex cut variable pricer
- * @author Fabio Ciccarelli
- **/
+/**@file   type_symmetry.h
+ * @brief  type definitions for symmetry computations
+ * @author Marc Pfetsch
+ * @author Christopher Hojny
+ */
 
- 
-#ifndef __PRICER_KVERTEXCUT__
-#define __PRICER_KVERTEXCUT__
+/*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
+
+#ifndef __CUSTOM_TYPE_SYMMETRY_H_
+#define __CUSTOM_TYPE_SYMMETRY_H_
 
 #include "scip/scip.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-/** creates the k-vertex cut variable pricer and includes it in SCIP */
-SCIP_RETCODE SCIPincludePricerKvertexcut(
-   SCIP*                 scip                /**< SCIP data structure */
-   );
+/** define types of symmetry groups that can be derived from symmetry detection graphs */
+enum SYM_Grouptype
+{
+   SYM_GROUPTYPE_VAR     = 0,                /**< group of variable symmetries */
+   SYM_GROUPTYPE_NODE    = 1,                /**< group of symmetries of nodes of symmetry detection graph */
+   SYM_GROUPTYPE_SDG     = 2                 /**< group of symmetries of full symmetry detection graph (incl. edges) */
+};
+typedef enum SYM_Grouptype SYM_GROUPTYPE;
 
-/** activates k-vertex cut pricer */
-SCIP_RETCODE SCIPpricerKvertexcutActivate(  
-   SCIP*                 scip,                       /**< SCIP data structure */
-   SCIP_CONS*            alpha_cardinality_constr,   /**< alpha cardinality constraint */
-   SCIP_CONS**           coverage_constrs,         /**< coverage constraints array */
-   SCIP_CONS**           clique_constrs,           /**< clique constraints array */
-   int                   nnodes,                     /**< number of nodes */
-   int                   nedges,                    /**< number of edges */
-   int                   n_cliques                  /**< number of cliques */
-   );
-
-/** returns number of columns generated at root node */
-int SCIPpricerKvertexcutGetNGenColsRootNode(
-   SCIP*                 scip                /**< SCIP data structure */
-   );
-
-/** returns number of Farkas columns generated */
-int SCIPpricerKvertexcutGetNGenFarkasCols(
-   SCIP*                 scip                /**< SCIP data structure */
-   );
+#ifdef __cplusplus
+}
+#endif
 
 #endif

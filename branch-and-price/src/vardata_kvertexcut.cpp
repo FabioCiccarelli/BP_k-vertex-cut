@@ -21,10 +21,7 @@ struct SCIP_VarData
 {
    int*                  subset;             /**< array of vertices in the subset S */
    int                   subsetsize;         /**< size of the subset S */
-<<<<<<< Updated upstream
-=======
    int                   nnodes;           /**< number of vertices in the graph */
->>>>>>> Stashed changes
 };
 
 /**@name Local methods
@@ -38,15 +35,19 @@ SCIP_RETCODE vardataCreate(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_VARDATA**        vardata,            /**< pointer to vardata */
    int*                  subset,             /**< array of nodes in the subset S */
-   int                   subsetsize         /**< size of the subset S */
+   int                   subsetsize,         /**< size of the subset S */
+   int                   nnodes              /**< number of nodes in the graph */
    )
 {
    SCIP_CALL( SCIPallocBlockMemory(scip, vardata) );
 
    /* copy subset array */
-   SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*vardata)->subset, subset, subsetsize) );
+   SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*vardata)->subset, subset, nnodes) );
    //SCIPsortInt((*vardata)->subset, subsetsize);
    (*vardata)->subsetsize = subsetsize;
+   (*vardata)->nnodes = nnodes;
+
+   // SCIPvardataPrint(scip, *vardata, NULL);
 
    return SCIP_OKAY;
 }
@@ -58,7 +59,7 @@ SCIP_RETCODE vardataDelete(
    SCIP_VARDATA**        vardata             /**< vardata to delete */
    )
 {
-   SCIPfreeBlockMemoryArray(scip, &(*vardata)->subset, (*vardata)->subsetsize);
+   SCIPfreeBlockMemoryArray(scip, &(*vardata)->subset, (*vardata)->nnodes);
    SCIPfreeBlockMemory(scip, vardata);
 
    return SCIP_OKAY;
@@ -95,10 +96,11 @@ SCIP_RETCODE SCIPvardataCreateKvertexcut(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_VARDATA**        vardata,            /**< pointer to vardata */
    int*                  subset,             /**< array of nodes in the subset S */
-   int                   subsetsize        /**< size of the subset S */
+   int                   subsetsize,        /**< size of the subset S */
+   int                   nnodes              /**< number of nodes in the graph */
    )
 {
-   SCIP_CALL( vardataCreate(scip, vardata, subset, subsetsize) );
+   SCIP_CALL( vardataCreate(scip, vardata, subset, subsetsize, nnodes) );
 
    return SCIP_OKAY;
 }
@@ -128,17 +130,11 @@ SCIP_Bool SCIPvardataIsEdgeInternal(
    )
 {
    assert(vardata != NULL);
+   assert(vardata->subset != NULL);
    assert(vardata->subsetsize > 0);
 
-   for(int i = 0; i < vardata->subsetsize; i++) {
-       if(vardata->subset[i] == u) {
-           for(int j = i+1; j < vardata->subsetsize; j++) {
-               if(vardata->subset[j] == v) {
-                   return TRUE; // both u and v are in the subset
-               }
-           }
-       }
-   }
+   if(vardata->subset[u] == 1 && vardata->subset[v] == 1)
+      return TRUE;
 
    return FALSE;
 }
@@ -159,10 +155,7 @@ SCIP_RETCODE SCIPcreateVarKvertexcut(
 
    /* create a basic variable object - α_S variables are continuous, non-negative */
    SCIP_CALL( SCIPcreateVarBasic(scip, var, name, 0.0, SCIPinfinity(scip), obj, SCIP_VARTYPE_CONTINUOUS) );
-<<<<<<< Updated upstream
-=======
    // SCIP_CALL( SCIPcreateVarBasic(scip, var, name, 0.0, 1.0, obj, SCIP_VARTYPE_INTEGER) );
->>>>>>> Stashed changes
    assert(*var != NULL);
 
    /* set callback functions */
@@ -188,17 +181,24 @@ void SCIPvardataPrint(
    )
 {
    int i;
+   int count = 0;
 
    assert(vardata != NULL);
 
    SCIPinfoMessage(scip, file, "subset S = {");
 
-   for( i = 0; i < vardata->subsetsize; ++i )
+   for( i = 0; i < vardata->nnodes; ++i )
    {
-      SCIPinfoMessage(scip, file, "%d", vardata->subset[i]);
+      if( vardata->subset[i] == 1 )
+      {
+         SCIPinfoMessage(scip, file, "%d", i);
+         count++;
 
-      if( i < vardata->subsetsize - 1 )
+         if( count < vardata->subsetsize && i < vardata->nnodes - 1 )
          SCIPinfoMessage(scip, file, ",");
+      }
+
+      
    }
 
    SCIPinfoMessage(scip, file, "}, |S| = %d\n", vardata->subsetsize);

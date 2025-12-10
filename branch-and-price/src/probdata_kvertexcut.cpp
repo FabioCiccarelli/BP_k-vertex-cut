@@ -18,8 +18,6 @@
 #include <fstream>
 #include <string>
 #include <sstream>
-<<<<<<< Updated upstream
-=======
 #include <stack>
 #include <vector>
 #include <algorithm>
@@ -30,24 +28,26 @@
 #include <fstream>
 #include <string>
 
->>>>>>> Stashed changes
 
 #include "gurobi_c++.h"
 #include "probdata_kvertexcut.h"
 #include "vardata_kvertexcut.h"
 #include "pricer_kvertexcut.h"
+#include "custom_compute_symmetry.h"
+#include "graph.h"
+#include "preprocessing.h"
 
 #include "scip/cons_linear.h"
 #include "scip/cons_setppc.h"
 #include "scip/scip.h"
+#include "scip/symmetry_graph.h"
+#include "scip/cons_symresack.h"
+#include "scip/event_shadowtree.h"
+#include "scip/symmetry_orbital.h"
+#include "scip/symmetry_lexred.h"
 
-#include "global_variables.h"
-
-<<<<<<< Updated upstream
 using namespace std;
 
-=======
->>>>>>> Stashed changes
 /** forward declarations */
 static SCIP_RETCODE probdataFree(SCIP* scip, SCIP_PROBDATA** probdata);
 
@@ -59,36 +59,16 @@ static SCIP_RETCODE probdataFree(SCIP* scip, SCIP_PROBDATA** probdata);
  */
 struct SCIP_ProbData
 {
-   int                   nnodes;             /**< number of nodes in the graph */
-   int                   nedges;             /**< number of edges in the graph */
-   int*                  tail;                /**< array of edge tail nodes */
-   int*                  head;                /**< array of edge head nodes */
-   int**                 adj_lists;          /**< adjacency lists for each node */
-   int*                  adj_sizes;          /**< size of adjacency list for each node */
-   SCIP_Bool**           adj_matrix;         /**< adjacency matrix */
-   int*                  node_degree;       /**< degree of each node */
-   int                   k;                  /**< parameter k for k-vertex cut */
+   Graph*                orig_graph;              /**< original graph structure */
+   Graph*                res_graph;               /**< residual graph structure */
+   int                   k;                      /**< parameter k for k-vertex cut */
 
    SCIP_VAR**            x_vars;             /**< array of node variables */
-   SCIP_VAR**            z_v_vars;           /**< array of z_v variables */
-   SCIP_VAR**            z_u_vars;           /**< array of z_u variables */
-   SCIP_VAR**            beta_v_vars;        /**< array of beta_v variables */
-   SCIP_VAR**            beta_u_vars;        /**< array of beta_u variables */
 
    SCIP_VAR**            alphavars;               /**< array of variables */
    int                   n_alphavars;             /**< number of variables */
    int                   alphavars_size;          /**< size of variables array */
 
-<<<<<<< Updated upstream
-   SCIP_CONS*            main_alpha_constr;          /**< main pricing constraint for α_S */
-   SCIP_CONS**           alpha_constrs;              /**< array of pricing constraints for α_S */
-   SCIP_CONS**           coverage_constrs;         /**< array of SCC coverage constraints */
-   int                   nalphaconstrs;             /**< number of pricing constraints for α_S */
-
-
-   SCIP_CONS**           other_contrs;        /**< array of other linear constraints*/
-   int                   notherconstrs;        /**< number of other linear constraints */
-=======
    SCIP_ROW**           clique_cuts;            /**< additional clique cuts */
    int                   n_clique_cuts;          /**< number of additional clique cuts */
    int                   clique_cuts_size;      /**< size of clique cuts array */
@@ -108,12 +88,15 @@ struct SCIP_ProbData
    SCIP_CONS**           clique_constrs;               /**< array of clique constraints */
    int                   n_cliques;                    /**< number of clique constraints */
    int                   min_connectivity;             /**< minimum vertex connectivity of the residual graph */
->>>>>>> Stashed changes
 
    int                   root_generated_vars;              /**< number of variables generated at root */
-   int                   farkas_generated_vars;             /**< number of generated variables with farkas pricing */
+   int                   farkas_generated_vars;            /**< number of generated variables with farkas pricing */
    double                root_lower_bound;                 /**< value of the LP relaxation */
-   double                root_upper_bound;                  /**< best incumbent value at the root node */
+   double                root_upper_bound;                 /**< best incumbent value at the root node */
+   
+   /* Preprocessing data */
+   bool*                 preFixed;                /**< array indicating which nodes are fixed by preprocessing */
+   int                   n_fixed;                 /**< number of fixed nodes */
 };
 
 /**@name Event handler properties
@@ -149,136 +132,21 @@ SCIP_DECL_EVENTEXEC(eventExecAddedVar)
    return SCIP_OKAY;
 }
 
-// Il nostro gestore di eventi con logica personalizzata (versione corretta)
-static
-SCIP_DECL_EVENTEXEC(eventExecMyLogic)
-{
-    assert(eventhdlr != NULL);
-    assert(strcmp(SCIPeventhdlrGetName(eventhdlr), "DENTRO_NODO") == 0);
-    assert(event != NULL);
-    assert(SCIPeventGetType(event) == SCIP_EVENTTYPE_NODEFOCUSED);
-
-    SCIP_NODE* node = SCIPgetCurrentNode(scip);
-    int num_node = SCIPnodeGetNumber(node);
-
-    // Update global_MaxDepth if needed
-   int depth = SCIPnodeGetDepth(node);
-   if( depth > global_MaxDepth )
-   {
-      global_MaxDepth = depth;
-   }
-
-   if((num_node == 2 || num_node == 3) && global_RootNodeLowerbound == -1){
-
-      // Get the father node
-      SCIP_NODE* parent_node = SCIPnodeGetParent(node);
-
-      SCIP_Real node_lowerbound = SCIPnodeGetLowerbound(parent_node);
-      SCIP_Real root_incumbent = SCIPgetPrimalbound(scip);
-
-      global_RootNodeLowerbound = (double)node_lowerbound;
-      global_RootNodeUpperbound = (double)root_incumbent;
-   }
-
-    // get local UB and LB for x variables
-    SCIP_PROBDATA* probdata = SCIPgetProbData(scip);
-
-    // get alpha variables and their count
-    SCIP_VAR** alpha_vars = SCIPprobdataGetAlphaVars(probdata);
-    int n_alpha_vars = SCIPprobdataGetNAlphaVars(probdata);
-
-
-    // print the number of the node we are at
-    // cout << "FOCUSING ON NODE NUMBER: " << SCIPnodeGetNumber(node) << endl;
-
-    // get domain changes for the node
-    SCIP_DOMCHG* domchg = SCIPnodeGetDomchg(node);
-    
-    if( domchg != NULL )
-    {
-        
-      SCIP_BOUNDCHG* boundchg = SCIPdomchgGetBoundchg(domchg, 0);
-      SCIP_VAR* var = SCIPboundchgGetVar(boundchg);
-      SCIP_Real newbound = SCIPboundchgGetNewbound(boundchg);
-
-      const char* varname = SCIPvarGetName(var);
-      
-      if( strncmp(varname, "t_x_", 4) == 0 )
-      {
-         char* endptr;
-         long vertex_index = strtol(varname + 4, &endptr, 10);
-
-         // print which variable has been changed and its new bound
-         // cout << "VARIABLE " << varname << " FIXED TO " << newbound << endl;
-         
-         // check if alpha variables contain the vertex whose variable has been fixed
-         for( int i = 0; i < n_alpha_vars; ++i )
-         {
-               SCIP_VAR* alpha_var = alpha_vars[i];
-               SCIP_VARDATA* vardata = SCIPvarGetData(alpha_var);
-               
-               if( vardata != NULL )
-               {
-                  // Get information about the subset
-                  int* subset = SCIPvardataGetSubset(vardata);
-
-                  // Check if vertex_index is present in the subset
-                  if(newbound == 1.0 && subset[vertex_index] == 1 && SCIPisGT(scip, SCIPvarGetUbLocal(alpha_var), 0.0) )
-                  {
-                     SCIP_CALL( SCIPchgVarUb(scip, alpha_var, 0.0) );
-                  }
-                  
-                  
-               }
-         }
-        
-      }
-   }
-     
-
-   return SCIP_OKAY;
-}
-
-
-
-
 /** creates transformed problem data */
 static
 SCIP_RETCODE probdataTrans(
    SCIP*                 scip,               /**< SCIP data structure */
-   SCIP_PROBDATA**       targetdata,           /**< pointer to problem data */
-   int                   nnodes,             /**< number of nodes in the graph */
-   int                   nedges,             /**< number of edges in the graph */
-   int*                  tail,                /**< array of edge tail nodes */
-   int*                  head,                /**< array of edge head nodes */
-   int**                 adj_lists,          /**< adjacency lists for each node */
-   int*                  adj_sizes,          /**< size of adjacency list for each node */
-   SCIP_Bool**           adj_matrix,         /**< adjacency matrix */
-   int*                  node_degree,       /**< degree of each node */
+   SCIP_PROBDATA**       targetdata,         /**< pointer to target problem data */
+   Graph*                orig_graph,         /**< original graph structure */
+   Graph*                res_graph,          /**< residual graph structure */
    int                   k,                  /**< parameter k for k-vertex cut */
 
    SCIP_VAR**            x_vars,             /**< array of node variables */
-   SCIP_VAR**            z_v_vars,           /**< array of z_v variables */
-   SCIP_VAR**            z_u_vars,           /**< array of z_u variables */
-   SCIP_VAR**            beta_v_vars,        /**< array of beta_v variables */
-   SCIP_VAR**            beta_u_vars,        /**< array of beta_u variables */
 
    SCIP_VAR**            alphavars,               /**< array of variables */
    int                   n_alphavars,             /**< number of variables */
    int                   alphavars_size,          /**< size of variables array */
 
-<<<<<<< Updated upstream
-   SCIP_CONS*            main_alpha_constr,          /**< main pricing constraint for α_S */
-   SCIP_CONS**           alpha_constrs,              /**< array of pricing constraints for α_S */
-   SCIP_CONS**           coverage_constrs,         /**< array of SCC coverage constraints */
-   int                   nalphaconstrs,             /**< number of pricing constraints for α_S */
-
-   SCIP_CONS**           other_contrs,        /**< array of other linear constraints*/
-   int                   notherconstrs        /**< number of other linear constraints */
-   )
-{
-   int i;
-=======
    SCIP_ROW**           clique_cuts,            /**< additional clique cuts */
    int                   n_clique_cuts,          /**< number of additional clique cuts */
    int                   clique_cuts_size,       /**< size of clique cuts array */
@@ -301,7 +169,6 @@ SCIP_RETCODE probdataTrans(
    )
 {
    int nnodes = res_graph->nnodes;
->>>>>>> Stashed changes
    
    assert(scip != NULL);
    assert(targetdata != NULL);
@@ -309,16 +176,14 @@ SCIP_RETCODE probdataTrans(
    /* allocate memory for problem data */
    SCIP_CALL( SCIPallocBlockMemory(scip, targetdata) );
 
+   /* copy Graph structure (deep copy) */
+   (*targetdata)->orig_graph = new Graph(*orig_graph);
+   (*targetdata)->res_graph = new Graph(*res_graph);
+
    /* copy basic problem parameters */
-   (*targetdata)->nnodes = nnodes;
-   (*targetdata)->nedges = nedges;
    (*targetdata)->k = k;
    (*targetdata)->n_alphavars = n_alphavars;
    (*targetdata)->alphavars_size = alphavars_size;
-<<<<<<< Updated upstream
-   (*targetdata)->nalphaconstrs = nalphaconstrs;
-   (*targetdata)->notherconstrs = notherconstrs;
-=======
    (*targetdata)->n_clique_cuts = n_clique_cuts;
    (*targetdata)->clique_cuts_size = clique_cuts_size;
    (*targetdata)->clique_cuts_cliques = clique_cuts_cliques;
@@ -327,67 +192,6 @@ SCIP_RETCODE probdataTrans(
    (*targetdata)->nsymconss = nsymconss;
    (*targetdata)->orbitalreddata = orbitalreddata;
    (*targetdata)->lexreddata = lexreddata;
->>>>>>> Stashed changes
-
-   /* duplicate edge arrays */
-   if( nedges > 0 )
-   {
-      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->tail, tail, nedges) );
-      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->head, head, nedges) );
-   }
-   else
-   {
-      (*targetdata)->tail = NULL;
-      (*targetdata)->head = NULL;
-   }
-
-   /* duplicate node arrays */
-   if( nnodes > 0 )
-   {
-      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->node_degree, node_degree, nnodes) );
-      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->adj_sizes, adj_sizes, nnodes) );
-   }
-   else
-   {
-      (*targetdata)->node_degree = NULL;
-      (*targetdata)->adj_sizes = NULL;
-   }
-
-   /* duplicate adjacency matrix */
-   if( nnodes > 0 )
-   {
-      SCIP_CALL( SCIPallocBlockMemoryArray(scip, &(*targetdata)->adj_matrix, nnodes) );
-      for( i = 0; i < nnodes; ++i )
-      {
-         SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->adj_matrix[i], adj_matrix[i], nnodes) );
-      }
-   }
-   else
-   {
-      (*targetdata)->adj_matrix = NULL;
-   }
-
-<<<<<<< Updated upstream
-   /* duplicate adjacency lists */
-   if( nnodes > 0 )
-   {
-      SCIP_CALL( SCIPallocBlockMemoryArray(scip, &(*targetdata)->adj_lists, nnodes) );
-      for( i = 0; i < nnodes; ++i )
-      {
-         if( adj_sizes[i] > 0 )
-         {
-            SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->adj_lists[i], adj_lists[i], adj_sizes[i]) );
-         }
-         else
-         {
-            (*targetdata)->adj_lists[i] = NULL;
-         }
-      }
-   }
-   else
-   {
-      (*targetdata)->adj_lists = NULL;
-   }
 
    /* duplicate variable arrays */
    if( nnodes > 0 )
@@ -399,21 +203,16 @@ SCIP_RETCODE probdataTrans(
       (*targetdata)->x_vars = NULL;
    }
 
-   if( nedges > 0 )
+   /* duplicate alpha variables array */
+   if( n_alphavars > 0 )
    {
-      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->beta_u_vars, beta_u_vars, nedges) );
-      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->beta_v_vars, beta_v_vars, nedges) );
-      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->z_u_vars, z_u_vars, nedges) );
-      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->z_v_vars, z_v_vars, nedges) );
+      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->alphavars, alphavars, alphavars_size) );
    }
    else
    {
-      (*targetdata)->beta_u_vars = NULL;
-      (*targetdata)->beta_v_vars = NULL;
-      (*targetdata)->z_u_vars = NULL;
-      (*targetdata)->z_v_vars = NULL;
+      (*targetdata)->alphavars = NULL;
    }
-=======
+
    /* duplicate alpha variables array */
    if( n_clique_cuts > 0 )
    {
@@ -428,179 +227,48 @@ SCIP_RETCODE probdataTrans(
    (*targetdata)->alpha_cardinality_constr = alpha_cardinality_constr;
    (*targetdata)->min_connectivity_constr = min_connectivity_constr;
 
->>>>>>> Stashed changes
 
-   /* duplicate alpha variables array */
-   if( n_alphavars > 0 )
+   if( nnodes > 0 )
    {
-      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->alphavars, alphavars, alphavars_size) );
+      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->vertex_cover_constrs, vertex_cover_constrs, nnodes) );
    }
    else
    {
-      (*targetdata)->alphavars = NULL;
+      (*targetdata)->vertex_cover_constrs = NULL;
    }
 
-   /* copy constraint pointers - COME NEL BPP */
-   (*targetdata)->main_alpha_constr = main_alpha_constr;
-
-   if( nalphaconstrs > 0 )
+   if( n_cliques > 0 )
    {
-      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->alpha_constrs, alpha_constrs, nalphaconstrs) );
+      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->clique_constrs, clique_constrs, n_cliques) );
    }
    else
    {
-      (*targetdata)->alpha_constrs = NULL;
+      (*targetdata)->clique_constrs = NULL;
    }
 
-<<<<<<< Updated upstream
-   if( notherconstrs > 0 )
-   {
-      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->other_contrs, other_contrs, notherconstrs) );
-=======
    /* copy preprocessing data */
    (*targetdata)->n_fixed = n_fixed;
    if( orig_graph->nnodes > 0 && preFixed != NULL )
    {
       SCIP_CALL( SCIPallocBlockMemoryArray(scip, &(*targetdata)->preFixed, orig_graph->nnodes) );
       memcpy((*targetdata)->preFixed, preFixed, orig_graph->nnodes * sizeof(bool));
->>>>>>> Stashed changes
    }
    else
    {
-      (*targetdata)->other_contrs = NULL;
+      (*targetdata)->preFixed = NULL;
    }
 
-   if( nnodes > 0 )
+   if( nsymconss > 0 )
    {
-      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->coverage_constrs, coverage_constrs, nnodes) );
+      SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->symconss, symconss, nsymconss) );
    }
    else
-   {
-      (*targetdata)->coverage_constrs = NULL;
-   }
+      (*targetdata)->symconss = NULL;
 
    return SCIP_OKAY;
 }
 
 /**@} */
-
-/***************************************************************************/
-int maxStableSet(GRBEnv& env, int nnodes, int nedges, int* tail, int* head, int v)
-/***************************************************************************/
-{
-	int output = 0;
-    
-   try {
-        // Crea ambiente e modello Gurobi
-        env.set(GRB_IntParam_OutputFlag, 0);        // Disabilita output generale
-        env.set(GRB_IntParam_LogToConsole, 0);      // Disabilita log su console
-        GRBModel model = GRBModel(env);
-
-        // cout << "Computing max stable set for node " << v << endl;
-        
-        // Crea variabili binarie per ogni vertice
-        std::vector<GRBVar> x(nnodes);
-        for(int i = 0; i < nnodes; i++) {
-            x[i] = model.addVar(0.0, 1.0, 1.0, GRB_BINARY);
-        }
-        
-        // Imposta funzione obiettivo: massimizza il numero di vertici nel stable set
-        GRBLinExpr obj = 0;
-        for(int i = 0; i < nnodes; i++) {
-            obj += x[i];
-        }
-        model.setObjective(obj, GRB_MAXIMIZE);
-        
-        // v, i suoi vicini e tutti i vertici fissati non possono appartenere al stable set
-        for(int e=0; e < nedges; e++){
-            if(tail[e] - 1 == v || head[e] - 1 == v){
-                int neighbor = (tail[e] - 1 == v) ? head[e] - 1 : tail[e] - 1;
-                x[neighbor].set(GRB_DoubleAttr_UB, 0.0);
-            }
-        }
-
-        x[v].set(GRB_DoubleAttr_UB, 0.0);
-        
-        // Vincoli: per ogni arco (i, j), al massimo un vertice può essere nel set
-        for(int i = 0; i < nedges; i++) {
-            int headNode = head[i] - 1;
-            int tailNode = tail[i] - 1;
-            model.addConstr(x[headNode] + x[tailNode] <= 1);
-        }
-        
-        // Imposta parametri di ottimizzazione
-        model.set(GRB_DoubleParam_TimeLimit, 1000.0);
-        model.set(GRB_IntParam_Threads, 1);      
-        
-        // Ottimizza
-        model.optimize();
-        
-        // Estrai il risultato
-        if(model.get(GRB_IntAttr_Status) == GRB_OPTIMAL) {
-            output = (int)(model.get(GRB_DoubleAttr_ObjVal) + 0.5);
-        }
-        else
-        {
-            cout << "Problems with the preprocessing" << endl;
-            exit(-1);
-        }
-        
-    } catch(GRBException& e) {
-        cerr << "Gurobi Error: " << e.getMessage() << endl;
-    } catch(...) {
-        cerr << "Error" << endl;
-    }
-    
-    return output;
-}
-
-/** Preprocessing **/
-static
-SCIP_RETCODE preprocess(
-   int nnodes,
-   int nedges,
-   int* tail,
-   int* head,
-   int k
-   )
-{
-   assert(scip != NULL);
-   assert(probdata != NULL);
-
-   int *bound;
-	bound = new int[nnodes];
-	preFixed = new bool[nnodes];
-
-   GRBEnv env = GRBEnv();
-
-	for(int i=0; i<nnodes; i++){
-      preFixed[i]=false;
-		bound[i]= maxStableSet(env, nnodes, nedges, tail, head , i);//prop2
-   }
-	
-	int v=0;
-	int totFixed=0;
-
-	while(v<nnodes){
-		if(k >= bound[v]+2 && !preFixed[v]){
-			preFixed[v]=true;
-			totFixed++;
-			for(int i=0; i<nnodes; i++){
-				if(!preFixed[i])
-					bound[i]=maxStableSet(env, nnodes, nedges, tail, head ,i);//prop2
-			}
-			v=0;			
-		}
-		else v++;
-	}
-
-   cout << "\n\nPREPROCESSING FIXED " << totFixed << " VARIABLES." << "\n\n\n";
-   cin.get();
-
-	delete [] bound;
-
-   return SCIP_OKAY;
-}
 
 
 /** create initial columns */
@@ -611,12 +279,17 @@ SCIP_RETCODE createInitialColumns(
    )
 {
    
-   SCIP_CONS** coverage_constrs;
+   SCIP_CONS* alpha_cardinality_constr;
+   SCIP_CONS** vertex_cover_constrs;
+   SCIP_CONS** clique_constrs;
 
-   int nnodes = probdata->nnodes;
-   int nedges = probdata->nedges;
+   int nnodes = probdata->res_graph->nnodes;
+   int n_cliques = probdata->n_cliques;
+   const std::vector<std::vector<bool>>* cliques = probdata->res_graph->getCliques();
 
-   coverage_constrs = probdata->coverage_constrs;
+   alpha_cardinality_constr = probdata->alpha_cardinality_constr;
+   vertex_cover_constrs = probdata->vertex_cover_constrs;
+   clique_constrs = probdata->clique_constrs;
    
    SCIP_VAR* newvar;
    SCIP_VARDATA* vardata;
@@ -625,9 +298,8 @@ SCIP_RETCODE createInitialColumns(
    int* subset = new int[nnodes];
    
    char name[SCIP_MAXSTRLEN];
-   int e, u, v;
 
-   for(v = 0; v < nnodes; ++v)
+   for(int v = 0; v < nnodes; ++v)
    {
       subsetsize = 1;   
 
@@ -638,23 +310,32 @@ SCIP_RETCODE createInitialColumns(
 
       (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "vertices_%d", v);
 
-      SCIP_CALL( SCIPvardataCreateKvertexcut(scip, &vardata, subset, subsetsize) );
+      SCIP_CALL( SCIPvardataCreateKvertexcut(scip, &vardata, subset, subsetsize, nnodes) );
 
       /* create variable for a new column with objective function coefficient 0.0 */
       SCIP_CALL( SCIPcreateVarKvertexcut(scip, &newvar, name, 0.0, FALSE, FALSE, vardata));
 
-      /* add the new variable to the pricer store */
+      /* add variable to the problem */
+      SCIP_CALL( SCIPaddVar(scip, newvar) );
       SCIP_CALL( SCIPprobdataAddVar(scip, probdata, newvar) );
 
-      SCIP_CALL( SCIPaddCoefLinear(scip, coverage_constrs[v], newvar, 1.0) );
+      SCIP_CALL( SCIPaddCoefLinear(scip, vertex_cover_constrs[v], newvar, 1.0) );
+
+      for( int c = 0; c < n_cliques; ++c )
+      {
+         if( (*cliques)[c][v] == true )
+         {
+            SCIP_CALL( SCIPaddCoefLinear(scip, clique_constrs[c], newvar, 1.0) );
+         }
+      }
+
+      SCIP_CALL( SCIPaddCoefLinear(scip, alpha_cardinality_constr, newvar, 1.0) );
 
       SCIPdebug(SCIPprintVar(scip, newvar, NULL) );
+
       SCIP_CALL(SCIPreleaseVar(scip, &newvar) );
    }
 
-<<<<<<< Updated upstream
-   for(e = 0; e < nedges; ++e)
-=======
    delete [] subset;
 
    return SCIP_OKAY;
@@ -776,14 +457,41 @@ SCIP_RETCODE warmStartHeuristic(
    /* Now create and set alpha variables for each connected component */
  
    for( size_t comp_idx = 0; comp_idx < components.size(); comp_idx++ )
->>>>>>> Stashed changes
    {
-      u = probdata->tail[e] - 1;
-      v = probdata->head[e] - 1;
+      vector<int>& component = components[comp_idx];
+      int comp_size = component.size();
+      
+      // Sort the component for consistent naming
+      sort(component.begin(), component.end());
+      
+      // Look for existing alpha variable for this subset
+      SCIP_VAR** alphavars = SCIPprobdataGetAlphaVars(probdata);
+      SCIP_VAR* alpha_var = NULL;
+      bool found_existing = false;
+      
+      if(comp_size == 1)
+      {
+         // Singleton
+         int node = component[0];
+         alpha_var = alphavars[node];
+         found_existing = true;
+      }
+      
+      // If not found, create new alpha variable (ONLY for non-singletons!)
+      if( !found_existing )
+      {
+      
+         string name = "vertices";
+      
+         // Create vardata
+         int* subset = new int[n_nodes];
+         memset(subset, 0, n_nodes * sizeof(int));
+         for( int j = 0; j < comp_size; j++ )
+         {
+            subset[component[j]] = 1;
+            name += "_" + std::to_string(component[j]);
+         }
 
-<<<<<<< Updated upstream
-      subsetsize = 2;   
-=======
          
          SCIP_VARDATA* vardata;
          SCIP_CALL( SCIPvardataCreateKvertexcut(scip, &vardata, subset, comp_size, n_nodes) );
@@ -800,15 +508,8 @@ SCIP_RETCODE warmStartHeuristic(
          SCIP_CONS** vertex_cover_constr = probdata->vertex_cover_constrs;
          SCIP_CONS** clique_constrs = probdata->clique_constrs;
          SCIP_CONS* alpha_cardinality_constr = probdata->alpha_cardinality_constr;
->>>>>>> Stashed changes
 
-      for( int ind = 0; ind < nnodes; ++ind )
-         subset[ind] = 0;
 
-<<<<<<< Updated upstream
-      subset[u] = 1;
-      subset[v] = 1;
-=======
      
          for(int v = 0; v < n_nodes; ++v )
          {
@@ -817,16 +518,21 @@ SCIP_RETCODE warmStartHeuristic(
                SCIP_CALL( SCIPaddCoefLinear(scip, vertex_cover_constr[v], alpha_var, 1.0) );
             }
          }
->>>>>>> Stashed changes
 
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "vertices_%d_%d", u, v);
+         for (int c = 0; c < n_cliques; c++)
+         {
+            for(int v = 0; v < n_nodes; v++)
+            {
+                  if((*cliques)[c][v] == true && subset[v] == 1)
+                  {
+                     SCIP_CALL( SCIPaddCoefLinear(scip, clique_constrs[c], alpha_var, 1.0) );
+                     break;
+                  }
+            }
+         }
 
-      SCIP_CALL( SCIPvardataCreateKvertexcut(scip, &vardata, subset, subsetsize) );
+         SCIP_CALL( SCIPaddCoefLinear(scip, alpha_cardinality_constr, alpha_var, 1.0) );
 
-<<<<<<< Updated upstream
-      /* create variable for a new column with objective function coefficient 0.0 */
-      SCIP_CALL( SCIPcreateVarKvertexcut(scip, &newvar, name, 0.0, FALSE, FALSE, vardata));
-=======
          delete[] subset;
       }
       
@@ -850,21 +556,64 @@ SCIP_RETCODE warmStartHeuristic(
       
    /* add solution to SCIP */
    SCIP_CALL( SCIPaddSol(scip, sol, &success) );
->>>>>>> Stashed changes
 
-      /* add the new variable to the pricer store */
-      SCIP_CALL( SCIPprobdataAddVar(scip, probdata, newvar) );
+   // cout << "\nSCIPaddSol returned, success = " << success << endl;
 
-      SCIP_CALL( SCIPaddCoefLinear(scip, coverage_constrs[u], newvar, 1.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, coverage_constrs[v], newvar, 1.0) );
+   if( success )
+   {
+      // cout << "*** CONNECTIVITY HEURISTIC FOUND FEASIBLE SOLUTION! ***" << endl;
+      SCIPdebugMsg(scip, "Connectivity heuristic found feasible solution\n");
+   }
+   else
+   {
+      // cout << "Connectivity heuristic solution was NOT accepted" << endl;
+      SCIPdebugMsg(scip, "Connectivity heuristic solution was not accepted\n");
+   }
+   
+   /* free solution structure */
+   SCIP_CALL( SCIPfreeSol(scip, &sol) );
       
-      SCIP_CALL( SCIPaddCoefLinear(scip, probdata->alpha_constrs[e], newvar, 1.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, probdata->main_alpha_constr, newvar, 1.0) );
+   return SCIP_OKAY;
+}
 
-<<<<<<< Updated upstream
-      SCIPdebug(SCIPprintVar(scip, newvar, NULL) );
-      SCIP_CALL(SCIPreleaseVar(scip, &newvar) );
-=======
+/** print information about symmetry handling */
+void printSymmetryInfo(
+   int                   nperms,             /**< number of symmetry generators */
+   int                   symmethod           /**< identifier of symmetry handling method */
+   )
+{
+   printf("\n=== SYMMETRY ===\n");
+   printf("number of generators:\t\t%d\n", nperms);
+   if( nperms > 0 )
+   {
+      if( symmethod == 1 )
+         printf("handle symmetries by symresacks\n");
+      else if( symmethod == 2 )
+         printf("handle symmetries by lexicographic reduction and orbital reductions\n");
+   }
+   printf("\n");
+}
+
+/** computes symmetries */
+static
+SCIP_RETCODE computeSymmetries(
+   SCIP*                 scip,               /**< SCIP data structure */
+   SCIP_VAR**            xvars,              /**< x-variables */
+   int***                perms,              /**< pointer to hold permutations */
+   int*                  nperms,             /**< pointer to hold number of permutations */
+   int*                  nmaxperms,          /**< pointer to hold length of perms */
+   int                   nnodes,             /**< number of nodes in graph */
+   int                   nedges,             /**< number of edges in graph */
+   int*                  head,               /**< array storing the head of each egde */
+   int*                  tail                /**< array storing the tail of each edge */
+   )
+{
+   SYM_GRAPH* graph;
+   SCIP_Real log10groupsize;
+   SCIP_Real symcodetime;
+   int idx;
+   int i;
+
    assert(scip != NULL);
    assert(perms != NULL);
    assert(nperms != NULL);
@@ -889,16 +638,71 @@ SCIP_RETCODE warmStartHeuristic(
    for( i = 0; i < nedges; ++i )
    {
       SCIP_CALL( SCIPaddSymgraphEdge(scip, graph, head[i], tail[i], FALSE, 0.0) );
->>>>>>> Stashed changes
    }
 
-   delete [] subset;
+   SCIP_CALL( SCIPcomputeSymgraphColors(scip, graph, 0) );
+
+   SCIP_CALL( SYMcomputeSymmetryGeneratorsNode(scip, 0, graph, nperms, nmaxperms, perms,
+         &log10groupsize, &symcodetime) );
+
+   SCIP_CALL( SCIPfreeSymgraph(scip, &graph) );
 
    return SCIP_OKAY;
 }
 
+/** tries to add symmetry handling constraints */
+static
+SCIP_RETCODE tryAddSymmetryHandlingConss(
+   SCIP*                 scip,               /**< SCIP data structure */
+   SCIP_VAR**            xvars,              /**< x-variables */
+   SCIP_CONS***          symconss,           /**< pointer to array for symmetry handling constraints */
+   int*                  nsymconss,          /**< pointer to store number of symmetry handling constraints */
+   int                   nnodes,             /**< number of nodes in graph */
+   int                   nedges,             /**< number of edges in graph */
+   int*                  head,               /**< array storing the head of each egde */
+   int*                  tail                /**< array storing the tail of each edge */
+   )
+{
+   char name[SCIP_MAXSTRLEN];
+   int i;
+   int nperms;
+   int nmaxperms;
+   int** perms;
 
+   assert(scip != NULL);
+   assert(symconss != NULL);
 
+   assert(*symconss == NULL);
+   assert(nsymconss != NULL);
+   assert(*symconss == 0);
+   assert(nnodes > 0);
+   assert(nedges > 0);
+   assert(head != NULL);
+   assert(tail != NULL);
+
+   SCIP_CALL( computeSymmetries(scip, xvars, &perms, &nperms, &nmaxperms, nnodes, nedges, head, tail) );
+
+   printSymmetryInfo(nperms, 1);
+   SCIP_CALL( SCIPallocBlockMemoryArray(scip, symconss, nperms) );
+   for( i = 0; i < nperms; ++i )
+   {
+      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "symcons_%d", i);
+      SCIP_CALL( SCIPcreateSymbreakCons(scip, &(*symconss)[i], name, perms[i], xvars, nnodes, FALSE,
+            TRUE, TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE) );
+      SCIP_CALL( SCIPaddCons(scip, (*symconss)[i]) );
+      // cout << "Added symmetry handling constraint " << name << endl;
+   }
+   *nsymconss = nperms;
+
+   /* free symmetry information */
+   for( i = 0; i < nperms; ++i )
+   {
+      SCIPfreeBlockMemoryArray(scip, &perms[i], 1 + nnodes);
+   }
+   SCIPfreeBlockMemoryArray(scip, &perms, nmaxperms);
+
+   return SCIP_OKAY;
+}
 
 
 /**@name Callback methods of problem data
@@ -923,30 +727,15 @@ SCIP_DECL_PROBTRANS(probtransKvertexcut)
 {
 
    SCIP_CALL( probdataTrans(scip, targetdata,
-<<<<<<< Updated upstream
-         sourcedata->nnodes, sourcedata->nedges, sourcedata->tail, sourcedata->head, sourcedata->adj_lists,
-         sourcedata->adj_sizes, sourcedata->adj_matrix, sourcedata->node_degree, sourcedata->k,
-         sourcedata->x_vars, sourcedata->z_v_vars, sourcedata->z_u_vars, sourcedata->beta_v_vars, sourcedata->beta_u_vars,
-         sourcedata->alphavars, sourcedata->n_alphavars, sourcedata->alphavars_size,
-         sourcedata->main_alpha_constr, sourcedata->alpha_constrs, sourcedata->coverage_constrs, sourcedata->nalphaconstrs,
-         sourcedata->other_contrs, sourcedata->notherconstrs) );
-=======
          sourcedata->orig_graph, sourcedata->res_graph, sourcedata->k,
          sourcedata->x_vars, sourcedata->alphavars, sourcedata->n_alphavars, sourcedata->alphavars_size,
          sourcedata->clique_cuts, sourcedata->n_clique_cuts, sourcedata->clique_cuts_size, sourcedata->clique_cuts_cliques,
          sourcedata->symconss, sourcedata->nsymconss, sourcedata->orbitalreddata, sourcedata->lexreddata,
          sourcedata->alpha_cardinality_constr, sourcedata->min_connectivity_constr, sourcedata->vertex_cover_constrs, sourcedata->clique_constrs, sourcedata->n_cliques, sourcedata->min_connectivity,
          sourcedata->preFixed, sourcedata->n_fixed) );
->>>>>>> Stashed changes
 
    /* transform all variables separately */
-   SCIP_CALL( SCIPtransformVars(scip, (*targetdata)->nnodes, (*targetdata)->x_vars, (*targetdata)->x_vars) );
-
-   SCIP_CALL( SCIPtransformVars(scip, (*targetdata)->nedges, (*targetdata)->beta_u_vars, (*targetdata)->beta_u_vars) );
-   SCIP_CALL( SCIPtransformVars(scip, (*targetdata)->nedges, (*targetdata)->beta_v_vars, (*targetdata)->beta_v_vars) );
-   
-   SCIP_CALL( SCIPtransformVars(scip, (*targetdata)->nedges, (*targetdata)->z_u_vars, (*targetdata)->z_u_vars) );
-   SCIP_CALL( SCIPtransformVars(scip, (*targetdata)->nedges, (*targetdata)->z_v_vars, (*targetdata)->z_v_vars) );
+   SCIP_CALL( SCIPtransformVars(scip, (*targetdata)->res_graph->nnodes, (*targetdata)->x_vars, (*targetdata)->x_vars) );
 
    if( (*targetdata)->n_alphavars > 0 )
    {
@@ -954,12 +743,6 @@ SCIP_DECL_PROBTRANS(probtransKvertexcut)
    }
 
    /* transform all constraints separately */
-<<<<<<< Updated upstream
-   SCIP_CALL( SCIPtransformCons(scip, (*targetdata)->main_alpha_constr, &(*targetdata)->main_alpha_constr) );
-   SCIP_CALL( SCIPtransformConss(scip, (*targetdata)->nalphaconstrs, (*targetdata)->alpha_constrs, (*targetdata)->alpha_constrs) );
-   SCIP_CALL( SCIPtransformConss(scip, (*targetdata)->nnodes, (*targetdata)->coverage_constrs, (*targetdata)->coverage_constrs) );
-   SCIP_CALL( SCIPtransformConss(scip, (*targetdata)->notherconstrs, (*targetdata)->other_contrs, (*targetdata)->other_contrs) );
-=======
    if( (*targetdata)->nsymconss > 0 )
    {
       SCIP_CALL( SCIPtransformConss(scip, (*targetdata)->nsymconss, (*targetdata)->symconss, (*targetdata)->symconss) );
@@ -970,8 +753,34 @@ SCIP_DECL_PROBTRANS(probtransKvertexcut)
    SCIP_CALL( SCIPtransformCons(scip, (*targetdata)->min_connectivity_constr, &(*targetdata)->min_connectivity_constr) );
    SCIP_CALL( SCIPtransformConss(scip, (*targetdata)->res_graph->nnodes, (*targetdata)->vertex_cover_constrs, (*targetdata)->vertex_cover_constrs) );
    SCIP_CALL( SCIPtransformConss(scip, (*targetdata)->n_cliques, (*targetdata)->clique_constrs, (*targetdata)->clique_constrs) );
->>>>>>> Stashed changes
    
+   /* possibly add dynamic symmetry handling methods */
+   if( sourcedata->perms != NULL )
+   {
+      SCIP_Bool success;
+      int p;
+
+      SCIP_CALL( SCIPallocBlockMemoryArray(scip, &(*targetdata)->perms, sourcedata->nperms) );
+      for( p = 0; p < sourcedata->nperms; ++p )
+      {
+         SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &(*targetdata)->perms[p], sourcedata->perms[p],
+               sourcedata->res_graph->nnodes) );
+      }
+      (*targetdata)->nperms = sourcedata->nperms;
+      (*targetdata)->lenperms = sourcedata->nperms;
+
+      SCIP_CALL( SCIPorbitalReductionAddComponent(scip, (*targetdata)->orbitalreddata, (*targetdata)->x_vars,
+            (*targetdata)->res_graph->nnodes, (*targetdata)->perms, (*targetdata)->nperms, &success) );
+      assert(success);
+      for( p = 0; p < (*targetdata)->nperms; ++p )
+      {
+         SCIP_CALL( SCIPlexicographicReductionAddPermutation(scip, (*targetdata)->lexreddata,
+               (*targetdata)->x_vars, (*targetdata)->res_graph->nnodes, (*targetdata)->perms[p],
+               SYM_SYMTYPE_PERM, NULL, TRUE, &success) );
+         assert(success);
+      }
+   }
+
    return SCIP_OKAY;
 }
 
@@ -1000,13 +809,6 @@ SCIP_DECL_PROBINITSOL(probinitsolKvertexcut)
 
    SCIP_CALL( SCIPcatchEvent(scip, SCIP_EVENTTYPE_VARADDED, eventhdlr, NULL, NULL) );
 
-   /* catch node focused event */
-   eventhdlr = SCIPfindEventhdlr(scip, "DENTRO_NODO");
-   assert(eventhdlr != NULL);
-
-   SCIP_CALL( SCIPcatchEvent(scip, SCIP_EVENTTYPE_NODEFOCUSED, eventhdlr, NULL, NULL) );
-
-
    return SCIP_OKAY;
 }
 
@@ -1023,12 +825,6 @@ SCIP_DECL_PROBEXITSOL(probexitsolKvertexcut)
    assert(eventhdlr != NULL);
 
    SCIP_CALL( SCIPdropEvent(scip, SCIP_EVENTTYPE_VARADDED, eventhdlr, NULL, -1) );
-
-   /* drop node focused event */
-   eventhdlr = SCIPfindEventhdlr(scip, "DENTRO_NODO");
-   assert(eventhdlr != NULL);
-
-   SCIP_CALL( SCIPdropEvent(scip, SCIP_EVENTTYPE_NODEFOCUSED, eventhdlr, NULL, -1) );
 
    return SCIP_OKAY;
 }
@@ -1054,11 +850,9 @@ SCIP_RETCODE SCIPprobdataCreate(
    )
 {
    SCIP_PROBDATA* probdata;
-   SCIP_CONS** alpha_constrs;
-   SCIP_CONS** coverage_constrs;
+   probdata = NULL;
 
    char name[SCIP_MAXSTRLEN];
-   int i, j;
 
    assert(scip != NULL);
    assert(nnodes > 0);
@@ -1067,8 +861,6 @@ SCIP_RETCODE SCIPprobdataCreate(
    assert(head != NULL || nedges == 0);
    assert(vertex_weights != NULL || nnodes == 0);
 
-<<<<<<< Updated upstream
-=======
    /* allocate memory for problem data */
    SCIP_CALL( SCIPallocBlockMemory(scip, &probdata) );
 
@@ -1088,14 +880,13 @@ SCIP_RETCODE SCIPprobdataCreate(
    cout << "Creating Graph structure with " << nnodes << " nodes and " << nedges << " edges..." << endl;
    probdata->orig_graph = new Graph(nnodes, nedges, tail, head, vertex_weights, true);
    
->>>>>>> Stashed changes
    /* create event handler if it does not exist yet */
    if( SCIPfindEventhdlr(scip, EVENTHDLR_NAME) == NULL )
    {
       SCIP_CALL( SCIPincludeEventhdlrBasic(scip, NULL, EVENTHDLR_NAME, EVENTHDLR_DESC, eventExecAddedVar, NULL) );
    }
 
-   SCIP_CALL( SCIPincludeEventhdlrBasic(scip, NULL, "DENTRO_NODO", "Does stuff inside a node", eventExecMyLogic, NULL) );
+   // SCIP_CALL( SCIPincludeEventhdlrBasic(scip, NULL, "DENTRO_NODO", "Does stuff inside a node", eventExecMyLogic, NULL) );
 
    /* create problem in SCIP and add non-NULL callbacks via setter functions */
    SCIP_CALL( SCIPcreateProbBasic(scip, probname) );
@@ -1122,20 +913,27 @@ SCIP_RETCODE SCIPprobdataCreate(
    unsigned int relax_constraints;
    SCIPgetBoolParam(scip, "options/relaxconstraints", &relax_constraints);
 
-   /* allocate memory for problem data */
-   SCIP_CALL( SCIPallocBlockMemory(scip, &probdata) );
+   /* Allocate memory for preprocessing data */
+   probdata->preFixed = new bool[nnodes];
+   
+   /* Perform preprocessing */
+   cout << "\n=== Starting Preprocessing ===" << endl;
+   probdata->n_fixed = performPreprocessing(*probdata->orig_graph, k, probdata->preFixed);
+   
+   /* Count connected components in the residual graph after preprocessing */
+   cout << "\nCounting connected components after preprocessing..." << endl;
+   int num_SCC = countConnectedComponents(*probdata->orig_graph, probdata->preFixed);
+   cout << "Found " << num_SCC << " connected components\n";
 
-   /* Preprocessing */
-   SCIP_CALL( preprocess(nnodes, nedges, tail, head, k) );
+   cout << "\n\nNUMBER OF VERTICES FIXED IN PREPROCESSING: " << probdata->n_fixed << "\n\n";
 
-   /* First create variables for each node (x_v) */
-   SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->x_vars, nnodes) );
-
-<<<<<<< Updated upstream
-   for( i = 0; i < nnodes; ++i )
+   if( k <= num_SCC)
    {
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "x_%d", i);
-=======
+      cout<<"-----------------------------------------------------------------------------------------\n";
+      cout << "The instance is trivial since k <= number of connected components after pre-fixing (" << num_SCC << ")." << endl;
+      cout << "Exiting..." << endl;
+      cout << "-----------------------------------------------------------------------------------------\n";
+
       /* Create residual graph */
       vector<int> old_to_new;
       vector<int> new_to_old;
@@ -1215,38 +1013,10 @@ SCIP_RETCODE SCIPprobdataCreate(
             cut[i] = true;
          }
       }
->>>>>>> Stashed changes
       
-      /* Create binary variable for each node (weight = 1 for unweighted case) */
-      if(preFixed[i]){
-         SCIP_CALL( SCIPcreateVarBasic(scip, &probdata->x_vars[i], name, 1.0, 1.0, 1.0, SCIP_VARTYPE_BINARY) );
-      }
-      else
+      ofstream resultsFile(resultsFileName, ios::app);
+      if (resultsFile.is_open())
       {
-<<<<<<< Updated upstream
-         SCIP_CALL( SCIPcreateVarBasic(scip, &probdata->x_vars[i], name, 0.0, 1.0, 1.0, SCIP_VARTYPE_BINARY) );
-      }
-      SCIP_CALL( SCIPaddVar(scip, probdata->x_vars[i]) );
-
-      // SCIP_CALL(SCIPchgVarBranchPriority(scip, probdata->x_vars[i], 1));
-   }
-
-   /* Constraint (13): Main alpha constraint */
-   /* expr: ∑_S (|S| - 1)α_S + ∑_V x_v + ∑_E (β^u_{uv} + β^v_{uv} - z^u_{uv} - z^v_{uv}) ≤ n - k */
-   SCIP_CONS* main_alpha_constr;
-   SCIP_CALL( SCIPcreateConsBasicLinear(scip, &main_alpha_constr, "main_alpha_constraint", 0, NULL, NULL, -SCIPinfinity(scip), (SCIP_Real)(nnodes - k)) );
-
-   /* Add +∑x_v terms to main constraint */
-   for( i = 0; i < nnodes; ++i )
-   {
-      SCIP_CALL( SCIPaddCoefLinear(scip, main_alpha_constr, probdata->x_vars[i], 1.0) );
-   }
-
-   /* This constraint will be modifiable for adding α_S variables during pricing */
-   SCIP_CALL( SCIPsetConsModifiable(scip, main_alpha_constr, TRUE) );
-   SCIP_CALL( SCIPaddCons(scip, main_alpha_constr) );
-
-=======
 
          resultsFile 
                   << SCIPgetProbName(scip) << "\t"
@@ -1372,142 +1142,21 @@ SCIP_RETCODE SCIPprobdataCreate(
    cout << "NUMBER OF CLIQUES ADDED FOR EDGE COVERING: " << n_cliques << endl;
    cout << "MIN_CONNECTIVITY of residual graph: " << min_connectivity << endl;
    cout << "-------------------------------------------------------------------------\n\n";
->>>>>>> Stashed changes
    
-   SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->beta_u_vars, nedges) );
-   SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->beta_v_vars, nedges) );
-   SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->z_u_vars, nedges) );
-   SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->z_v_vars, nedges) );
+   /* Store min_connectivity in probdata */
+   probdata->min_connectivity = min_connectivity;
 
-<<<<<<< Updated upstream
-   /* Alloc memory for storing constraints */
-   SCIP_CALL( SCIPallocBufferArray(scip, &alpha_constrs, nedges) );
-   SCIP_CALL( SCIPallocBufferArray(scip, &coverage_constrs, nnodes) );
-=======
    /* FORMULATION */
    SCIP_CONS** vertex_cover_constrs;
    SCIP_CONS** clique_constrs;
->>>>>>> Stashed changes
    
-   SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->other_contrs, nedges * 6) );
-   probdata->notherconstrs = 0;
+   /* First create variables for each node (x_v) */
+   SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->x_vars, probdata->res_graph->nnodes) );
 
-   for( i = 0; i < nedges; ++i )
+   for(int v = 0; v < probdata->res_graph->nnodes; ++v )
    {
-      int u = tail[i] - 1; /* convert to 0-indexed */
-      int v = head[i] - 1;
-      
-      /* Create β^u_{uv} and β^v_{uv} variables */
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "beta_u_%d_%d", u, v);
-      SCIP_CALL( SCIPcreateVarBasic(scip, &probdata->beta_u_vars[i], name, 0.0, 1.0, 0.0, SCIP_VARTYPE_CONTINUOUS) );
-      SCIP_CALL( SCIPaddVar(scip, probdata->beta_u_vars[i]) );
+      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "x_%d", v);
 
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "beta_v_%d_%d", u, v);
-      SCIP_CALL( SCIPcreateVarBasic(scip, &probdata->beta_v_vars[i], name, 0.0, 1.0, 0.0, SCIP_VARTYPE_CONTINUOUS) );
-      SCIP_CALL( SCIPaddVar(scip, probdata->beta_v_vars[i]) );
-
-      /* Create z^u_{uv} and z^v_{uv} variables for linearization */
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "z_u_%d_%d", u, v);
-      SCIP_CALL( SCIPcreateVarBasic(scip, &probdata->z_u_vars[i], name, 0.0, 1.0, 0.0, SCIP_VARTYPE_CONTINUOUS) );
-      SCIP_CALL( SCIPaddVar(scip, probdata->z_u_vars[i]) );
-
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "z_v_%d_%d", u, v);
-      SCIP_CALL( SCIPcreateVarBasic(scip, &probdata->z_v_vars[i], name, 0.0, 1.0, 0.0, SCIP_VARTYPE_CONTINUOUS) );
-      SCIP_CALL( SCIPaddVar(scip, probdata->z_v_vars[i]) );
-
-      /* Constraint: ∑_S α_S + β^u_{uv} + β^v_{uv} ≥ 1  */
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "second_alpha_%d_%d", u, v);
-      SCIP_CALL( SCIPcreateConsBasicLinear(scip, &alpha_constrs[i], name, 0, NULL, NULL, 1.0, SCIPinfinity(scip)) );
-      
-      SCIP_CALL( SCIPaddCoefLinear(scip, alpha_constrs[i], probdata->beta_u_vars[i], 1.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, alpha_constrs[i], probdata->beta_v_vars[i], 1.0) );
-      
-      /* This constraint will be modifiable for adding α_S variables during pricing */
-      SCIP_CALL( SCIPsetConsModifiable(scip, alpha_constrs[i], TRUE) );
-      SCIP_CALL( SCIPaddCons(scip, alpha_constrs[i]) );
-
-<<<<<<< Updated upstream
-      /* Add β variables to main constraint */
-      SCIP_CALL( SCIPaddCoefLinear(scip, main_alpha_constr, probdata->beta_u_vars[i], 1.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, main_alpha_constr, probdata->beta_v_vars[i], 1.0) );
-
-      /* Linearization constraints (15)-(18) for z^u_{uv} = β^u_{uv} * x_u */
-      
-      /* Constraint: z^u_{uv} ≤ x_u */
-      SCIP_CONS* lin1_cons;
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "lin1_%d_%d", u, v);
-      SCIP_CALL( SCIPcreateConsBasicLinear(scip, &lin1_cons, name, 0, NULL, NULL, -SCIPinfinity(scip), 0.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, lin1_cons, probdata->z_u_vars[i], 1.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, lin1_cons, probdata->x_vars[u], -1.0) ); 
-      SCIP_CALL( SCIPaddCons(scip, lin1_cons) );
-      probdata->other_contrs[probdata->notherconstrs++] = lin1_cons;
-
-      /* Constraint: z^u_{uv} ≤ β^u_{uv} */
-      SCIP_CONS* lin2_cons;
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "lin2_%d_%d", u, v);
-      SCIP_CALL( SCIPcreateConsBasicLinear(scip, &lin2_cons, name, 0, NULL, NULL, -SCIPinfinity(scip), 0.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, lin2_cons, probdata->z_u_vars[i], 1.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, lin2_cons, probdata->beta_u_vars[i], -1.0) );
-      SCIP_CALL( SCIPaddCons(scip, lin2_cons) );
-      probdata->other_contrs[probdata->notherconstrs++] = lin2_cons;
-
-      /* Constraint: z^u_{uv} ≥ β^u_{uv} - 1 + x_u */
-      SCIP_CONS* lin3_cons;
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "lin3_%d_%d", u, v);
-      SCIP_CALL( SCIPcreateConsBasicLinear(scip, &lin3_cons, name, 0, NULL, NULL, -1.0, SCIPinfinity(scip)) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, lin3_cons, probdata->z_u_vars[i], 1.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, lin3_cons, probdata->beta_u_vars[i], -1.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, lin3_cons, probdata->x_vars[u], -1.0) );
-      SCIP_CALL( SCIPaddCons(scip, lin3_cons) );
-      probdata->other_contrs[probdata->notherconstrs++] = lin3_cons;
-
-      /* Same linearization constraints for z^v_{uv} = β^v_{uv} * x_v */
-      
-      /* z^v_{uv} ≤ x_v */
-      SCIP_CONS* lin1v_cons;
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "lin1v_%d_%d", u, v);
-      SCIP_CALL( SCIPcreateConsBasicLinear(scip, &lin1v_cons, name, 0, NULL, NULL, -SCIPinfinity(scip), 0.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, lin1v_cons, probdata->z_v_vars[i], 1.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, lin1v_cons, probdata->x_vars[v], -1.0) );
-      SCIP_CALL( SCIPaddCons(scip, lin1v_cons) );
-      probdata->other_contrs[probdata->notherconstrs++] = lin1v_cons;
-
-      /* z^v_{uv} ≤ β^v_{uv} */
-      SCIP_CONS* lin2v_cons;
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "lin2v_%d_%d", u, v);
-      SCIP_CALL( SCIPcreateConsBasicLinear(scip, &lin2v_cons, name, 0, NULL, NULL, -SCIPinfinity(scip), 0.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, lin2v_cons, probdata->z_v_vars[i], 1.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, lin2v_cons, probdata->beta_v_vars[i], -1.0) );
-      SCIP_CALL( SCIPaddCons(scip, lin2v_cons) );
-      probdata->other_contrs[probdata->notherconstrs++] = lin2v_cons;
-
-      /* z^v_{uv} ≥ β^v_{uv} - 1 + x_v */
-      SCIP_CONS* lin3v_cons;
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "lin3v_%d_%d", u, v);
-      SCIP_CALL( SCIPcreateConsBasicLinear(scip, &lin3v_cons, name, 0, NULL, NULL, -1.0, SCIPinfinity(scip)) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, lin3v_cons, probdata->z_v_vars[i], 1.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, lin3v_cons, probdata->beta_v_vars[i], -1.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, lin3v_cons, probdata->x_vars[v], -1.0) );
-      SCIP_CALL( SCIPaddCons(scip, lin3v_cons) );
-      probdata->other_contrs[probdata->notherconstrs++] = lin3v_cons;
-
-      /* Add z variables to main constraint */
-      SCIP_CALL( SCIPaddCoefLinear(scip, main_alpha_constr, probdata->z_u_vars[i], -1.0) );
-      SCIP_CALL( SCIPaddCoefLinear(scip, main_alpha_constr, probdata->z_v_vars[i], -1.0) );
-   }
-
-   for(int v = 0; v < nnodes; ++v )
-   {
-      /* Constraint: ∑_S α_S + x_v = 0  */
-      (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "coverage_constr_%d", v);
-      SCIP_CALL( SCIPcreateConsBasicLinear(scip, &coverage_constrs[v], name, 0, NULL, NULL, 0.0, SCIPinfinity(scip)) );
-
-      SCIP_CALL( SCIPaddCoefLinear(scip, coverage_constrs[v], probdata->x_vars[v], 1.0) );
-
-      /* This constraint will be modifiable for adding α_S variables during pricing */
-      SCIP_CALL( SCIPsetConsModifiable(scip, coverage_constrs[v], TRUE) );
-      SCIP_CALL( SCIPaddCons(scip, coverage_constrs[v]) );
-=======
       if( !LPonly )
       {
          /* Create binary variable x_v */
@@ -1550,70 +1199,18 @@ SCIP_RETCODE SCIPprobdataCreate(
    for(int v = 0; v < probdata->res_graph->nnodes; ++v )
    {
       SCIP_CALL( SCIPaddCoefLinear(scip, min_connectivity_constr, probdata->x_vars[v], probdata->res_graph->vertex_weights[v]) );
->>>>>>> Stashed changes
    }
+   
+   SCIP_CALL(SCIPaddCons(scip, min_connectivity_constr));
 
-<<<<<<< Updated upstream
-     
-   /* store basic graph information */
-   probdata->nnodes = nnodes;
-   probdata->nedges = nedges;
-   probdata->k = k;
-   probdata->main_alpha_constr = main_alpha_constr;
-
-   /* allocate and copy edge arrays */
-   if( nedges > 0 )
-   {
-      SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->tail, nedges) );
-      SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->head, nedges) );
-      
-      for( i = 0; i < nedges; ++i )
-      {
-         probdata->tail[i] = tail[i];
-         probdata->head[i] = head[i];
-      }
-   }
-   else
-   {
-      probdata->tail = NULL;
-      probdata->head = NULL;
-   }
-
-   /* allocate memory for adjacency structures */
-   SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->adj_lists, nnodes) );
-   SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->adj_sizes, nnodes) );
-   SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->node_degree, nnodes) );
-
-   /* allocate memory for adjacency matrix */
-   SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->adj_matrix, nnodes) );
-   for( i = 0; i < nnodes; ++i )
-   {
-      SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->adj_matrix[i], nnodes) );
-   }
-
-   /* initialize adjacency matrix to FALSE */
-   for( i = 0; i < nnodes; ++i )
-   {
-      for( j = 0; j < nnodes; ++j )
-      {
-         probdata->adj_matrix[i][j] = FALSE;
-      }
-   }
-=======
    /* Alloc memory for storing constraints */
    probdata->n_cliques = n_cliques;
    SCIP_CALL( SCIPallocBufferArray(scip, &vertex_cover_constrs, probdata->res_graph->nnodes) );
    SCIP_CALL( SCIPallocBufferArray(scip, &clique_constrs, n_cliques) );
 
->>>>>>> Stashed changes
 
-   /* initialize node degrees to 0 */
-   for( i = 0; i < nnodes; ++i )
+   for(int v = 0; v < probdata->res_graph->nnodes; ++v )
    {
-<<<<<<< Updated upstream
-      probdata->node_degree[i] = 0;
-   }
-=======
       /* Constraint: ∑_S(v) α_S + x_v >= 1  */
       (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "coverage_constr_%d", v);
 
@@ -1625,42 +1222,17 @@ SCIP_RETCODE SCIPprobdataCreate(
       {
       SCIP_CALL( SCIPcreateConsBasicLinear(scip, &vertex_cover_constrs[v], name, 0, NULL, NULL, 1.0, 1.0) );
       }
->>>>>>> Stashed changes
 
-   /* count degrees and fill adjacency matrix */
-   for( i = 0; i < nedges; ++i )
-   {
-      int u = tail[i];
-      int v = head[i];
-      
-      /* assuming nodes are 1-indexed, convert to 0-indexed */
-      if( u >= 1 && v >= 1 && u <= nnodes && v <= nnodes )
-      {
-         u--; /* convert to 0-indexed */
-         v--; /* convert to 0-indexed */
-         
-         probdata->adj_matrix[u][v] = TRUE;
-         probdata->adj_matrix[v][u] = TRUE; /* undirected graph */
+      SCIP_CALL( SCIPaddCoefLinear(scip, vertex_cover_constrs[v], probdata->x_vars[v], 1.0) );
 
-         probdata->node_degree[u]++;
-         probdata->node_degree[v]++;
-      }
+      /* This constraint will be modifiable for adding α_S variables during pricing */
+      SCIP_CALL( SCIPsetConsModifiable(scip, vertex_cover_constrs[v], TRUE) );
+      SCIP_CALL( SCIPaddCons(scip, vertex_cover_constrs[v]) );
    }
 
-   /* allocate and build adjacency lists */
-   for( i = 0; i < nnodes; ++i )
+
+   for(int c = 0; c < n_cliques; ++c )
    {
-<<<<<<< Updated upstream
-      probdata->adj_sizes[i] = probdata->node_degree[i];
-      if( probdata->node_degree[i] > 0 )
-      {
-         SCIP_CALL( SCIPallocBlockMemoryArray(scip, &probdata->adj_lists[i], probdata->node_degree[i]) );
-      }
-      else
-      {
-         probdata->adj_lists[i] = NULL;
-      }
-=======
       /* Constraint: ∑_S(C) α_S <= 1  */
       (void) SCIPsnprintf(name, SCIP_MAXSTRLEN, "clique_constr_%d", c);
       SCIP_CALL( SCIPcreateConsBasicLinear(scip, &clique_constrs[c], name, 0, NULL, NULL, -SCIPinfinity(scip), 1.0) );
@@ -1668,41 +1240,15 @@ SCIP_RETCODE SCIPprobdataCreate(
       /* This constraint will be modifiable for adding α_S variables during pricing */
       SCIP_CALL( SCIPsetConsModifiable(scip, clique_constrs[c], TRUE) );
       SCIP_CALL( SCIPaddCons(scip, clique_constrs[c]) );
->>>>>>> Stashed changes
    }
 
-   /* fill adjacency lists */
-   int* counters;
-   SCIP_CALL( SCIPallocBufferArray(scip, &counters, nnodes) );
-   for( i = 0; i < nnodes; ++i )
-      counters[i] = 0;
 
-   for( i = 0; i < nedges; ++i )
-   {
-      int u = tail[i];
-      int v = head[i];
-      
-      if( u >= 1 && v >= 1 && u <= nnodes && v <= nnodes )
-      {
-         u--; /* convert to 0-indexed */
-         v--; /* convert to 0-indexed */
-         
-         probdata->adj_lists[u][counters[u]++] = v;
-         probdata->adj_lists[v][counters[v]++] = u;
-      }
-   }
-   
-   SCIPfreeBufferArray(scip, &counters);
+   probdata->alpha_cardinality_constr = alpha_cardinality_constr;
+   probdata->min_connectivity_constr = min_connectivity_constr;
 
    /* store constraints */
-<<<<<<< Updated upstream
-   SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &probdata->alpha_constrs, alpha_constrs, nedges) );
-   SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &probdata->coverage_constrs, coverage_constrs, nnodes) );
-   probdata->nalphaconstrs = nedges;
-=======
    SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &probdata->vertex_cover_constrs, vertex_cover_constrs, probdata->res_graph->nnodes) );
    SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &probdata->clique_constrs, clique_constrs, n_cliques) );
->>>>>>> Stashed changes
 
    /* initialize variables arrays */
    probdata->alphavars = NULL;
@@ -1715,9 +1261,6 @@ SCIP_RETCODE SCIPprobdataCreate(
 
    
    /* initialize singleton columns*/
-<<<<<<< Updated upstream
-   SCIP_CALL( createInitialColumns(scip, probdata) );
-=======
    SCIP_CALL(createInitialColumns(scip, probdata));
 
    unsigned int option_conn_warmstart;
@@ -1738,18 +1281,11 @@ SCIP_RETCODE SCIPprobdataCreate(
    }
 
    /* Notice that the ILP heuristic "dominates" the connectivity heuristic. If both are enabled, only the ILP heuristic is run. */
->>>>>>> Stashed changes
 
    /* set user problem data */
    SCIP_CALL( SCIPsetProbData(scip, probdata) );
 
    /* activate pricer for k-vertex cut */
-<<<<<<< Updated upstream
-   SCIP_CALL( SCIPpricerKvertexcutActivate(scip, probdata->main_alpha_constr, probdata->alpha_constrs, probdata->coverage_constrs, nnodes, nedges) );
-
-   /* free local buffer arrays */
-   SCIPfreeBufferArray(scip, &alpha_constrs);
-=======
    SCIP_CALL( SCIPpricerKvertexcutActivate(scip, 
                                            probdata->alpha_cardinality_constr, probdata->vertex_cover_constrs, probdata->clique_constrs, 
                                            probdata->res_graph->nnodes, probdata->res_graph->nedges, probdata->n_cliques) );
@@ -1783,16 +1319,12 @@ SCIP_RETCODE SCIPprobdataCreate(
    /* free local buffer arrays */
    SCIPfreeBufferArray(scip, &vertex_cover_constrs);
    SCIPfreeBufferArray(scip, &clique_constrs);
->>>>>>> Stashed changes
 
-   SCIPinfoMessage(scip, NULL, "Created k-vertex cut problem: %d nodes, %d edges, k=%d\n", nnodes, nedges, k);
+   SCIPinfoMessage(scip, NULL, "Created k-vertex cut problem: %d nodes, %d edges, k=%d\n", 
+                                probdata->res_graph->nnodes, probdata->res_graph->nedges, probdata->k);
 
    /* write problem formulation to .lp file for debugging */
-<<<<<<< Updated upstream
-   SCIP_CALL( SCIPwriteOrigProblem(scip, "new_formulation.lp", "lp", FALSE) );
-=======
    // SCIP_CALL( SCIPwriteOrigProblem(scip, "formulation.lp", "lp", FALSE) );
->>>>>>> Stashed changes
 
    return SCIP_OKAY;
 }
@@ -1809,21 +1341,10 @@ SCIP_RETCODE probdataFree(
    assert(scip != NULL);
    assert(probdata != NULL);
 
-<<<<<<< Updated upstream
-   /* release all variables */
-   for( i = 0; i < (*probdata)->nedges; ++i )
-   {
-      SCIP_CALL( SCIPreleaseVar(scip, &(*probdata)->beta_u_vars[i]) );
-      SCIP_CALL( SCIPreleaseVar(scip, &(*probdata)->beta_v_vars[i]) );
-      SCIP_CALL( SCIPreleaseVar(scip, &(*probdata)->z_u_vars[i]) );
-      SCIP_CALL( SCIPreleaseVar(scip, &(*probdata)->z_v_vars[i]) );
-   }
-=======
    /* Get nnodes from graph before deleting it */
    int nnodes = (*probdata)->res_graph->nnodes;
->>>>>>> Stashed changes
 
-   for( i = 0; i < (*probdata)->nnodes; ++i )
+   for( i = 0; i < nnodes; ++i )
    {
       SCIP_CALL( SCIPreleaseVar(scip, &(*probdata)->x_vars[i]) );
    }
@@ -1833,68 +1354,49 @@ SCIP_RETCODE probdataFree(
       SCIP_CALL( SCIPreleaseVar(scip, &(*probdata)->alphavars[i]) );
    }
 
-<<<<<<< Updated upstream
-   /* release all constraints */
-   for( i = 0; i < (*probdata)->nalphaconstrs; ++i )
-   {
-      SCIP_CALL( SCIPreleaseCons(scip, &(*probdata)->alpha_constrs[i]) );
-   }
-
-   for( i = 0; i < (*probdata)->nnodes; ++i )
-=======
    for( i = 0; i < nnodes; ++i )
->>>>>>> Stashed changes
    {
-      SCIP_CALL( SCIPreleaseCons(scip, &(*probdata)->coverage_constrs[i]) );
+      SCIP_CALL( SCIPreleaseCons(scip, &(*probdata)->vertex_cover_constrs[i]) );
    }
 
-   for( i = 0; i < (*probdata)->notherconstrs; ++i )
+   for (i = 0; i < (*probdata)->n_cliques; ++i )
    {
-      SCIP_CALL( SCIPreleaseCons(scip, &(*probdata)->other_contrs[i]) );
+      SCIP_CALL( SCIPreleaseCons(scip, &(*probdata)->clique_constrs[i]) );
    }
 
-   /* release main constraint */
-   SCIP_CALL( SCIPreleaseCons(scip, &(*probdata)->main_alpha_constr) );
+   /* release symmetry constraints */
+   for( i = 0; i < (*probdata)->nsymconss; ++i )
+   {
+      SCIP_CALL( SCIPreleaseCons(scip, &(*probdata)->symconss[i]) );
+   }
+
+   /* release cardinality constraint */
+   SCIP_CALL( SCIPreleaseCons(scip, &(*probdata)->alpha_cardinality_constr) );
    
-
-   /* free memory of adjacency lists */
-   for( i = 0; i < (*probdata)->nnodes; ++i )
-   {
-      if( (*probdata)->adj_lists[i] != NULL )
-      {
-         SCIPfreeBlockMemoryArray(scip, &(*probdata)->adj_lists[i], (*probdata)->adj_sizes[i]);
-      }
-   }
-
-   /* free memory of adjacency matrix */
-   for( i = 0; i < (*probdata)->nnodes; ++i )
-   {
-      SCIPfreeBlockMemoryArray(scip, &(*probdata)->adj_matrix[i], (*probdata)->nnodes);
-   }
-
+   /* release minimum connectivity constraint */
+   SCIP_CALL( SCIPreleaseCons(scip, &(*probdata)->min_connectivity_constr) );
+   
    /* free memory of arrays */
    if( (*probdata)->n_alphavars > 0 )
    {
       SCIPfreeBlockMemoryArray(scip, &(*probdata)->alphavars, (*probdata)->alphavars_size);
    }
 
-   SCIPfreeBlockMemoryArray(scip, &(*probdata)->x_vars, (*probdata)->nnodes);
+   /* possibly free symmetry data */
+   if( (*probdata)->perms != NULL )
+   {
+      for( i = 0; i < (*probdata)->nperms; ++i )
+      {
+         SCIPfreeBlockMemoryArray(scip, &(*probdata)->perms[i], (*probdata)->res_graph->nnodes);
+      }
+      SCIPfreeBlockMemoryArray(scip, &(*probdata)->perms, (*probdata)->lenperms);
 
-   SCIPfreeBlockMemoryArray(scip, &(*probdata)->beta_u_vars, (*probdata)->nedges);
-   SCIPfreeBlockMemoryArray(scip, &(*probdata)->beta_v_vars, (*probdata)->nedges);
-   SCIPfreeBlockMemoryArray(scip, &(*probdata)->z_u_vars, (*probdata)->nedges);
-   SCIPfreeBlockMemoryArray(scip, &(*probdata)->z_v_vars, (*probdata)->nedges);
+      SCIP_CALL( SCIPlexicographicReductionFree(scip, &(*probdata)->lexreddata) );
+      SCIP_CALL( SCIPorbitalReductionFree(scip, &(*probdata)->orbitalreddata) );
+   }
 
-   SCIPfreeBlockMemoryArray(scip, &(*probdata)->alpha_constrs, (*probdata)->nalphaconstrs);
-   SCIPfreeBlockMemoryArray(scip, &(*probdata)->coverage_constrs, (*probdata)->nnodes);
-   SCIPfreeBlockMemoryArray(scip, &(*probdata)->other_contrs, (*probdata)->notherconstrs);
+   SCIPfreeBlockMemoryArray(scip, &(*probdata)->x_vars, nnodes);
 
-<<<<<<< Updated upstream
-   SCIPfreeBlockMemoryArray(scip, &(*probdata)->adj_matrix, (*probdata)->nnodes);
-   SCIPfreeBlockMemoryArray(scip, &(*probdata)->adj_lists, (*probdata)->nnodes);
-   SCIPfreeBlockMemoryArray(scip, &(*probdata)->adj_sizes, (*probdata)->nnodes);
-   SCIPfreeBlockMemoryArray(scip, &(*probdata)->node_degree, (*probdata)->nnodes);
-=======
    SCIPfreeBlockMemoryArray(scip, &(*probdata)->vertex_cover_constrs, nnodes);
    SCIPfreeBlockMemoryArray(scip, &(*probdata)->clique_constrs, (*probdata)->n_cliques);
    SCIPfreeBlockMemoryArray(scip, &(*probdata)->clique_cuts, (*probdata)->clique_cuts_size);
@@ -1904,12 +1406,14 @@ SCIP_RETCODE probdataFree(
    {
       SCIPfreeBlockMemoryArray(scip, &(*probdata)->preFixed, (*probdata)->orig_graph->nnodes);
    }
->>>>>>> Stashed changes
    
-   if( (*probdata)->nedges > 0 )
+   /* delete graph structure (calls destructor) */
+   delete (*probdata)->orig_graph;
+   delete (*probdata)->res_graph;
+
+   if( (*probdata)->nsymconss > 0 )
    {
-      SCIPfreeBlockMemoryArray(scip, &(*probdata)->tail, (*probdata)->nedges);
-      SCIPfreeBlockMemoryArray(scip, &(*probdata)->head, (*probdata)->nedges);
+      SCIPfreeBlockMemoryArray(scip, &(*probdata)->symconss, (*probdata)->nsymconss);
    }
 
    /* free probdata */
@@ -1972,39 +1476,6 @@ SCIP_VAR** SCIPprobdataGetXVars(
    return probdata->x_vars;
 }
 
-SCIP_VAR** SCIPprobdataGetZUVars(
-   SCIP_PROBDATA*        probdata            /**< problem data */
-   )
-{
-   assert(probdata != NULL);
-   return probdata->z_u_vars;
-}
-
-SCIP_VAR** SCIPprobdataGetZVVars(
-   SCIP_PROBDATA*        probdata            /**< problem data */
-   )
-{
-   assert(probdata != NULL);
-   return probdata->z_v_vars;
-}
-
-SCIP_VAR** SCIPprobdataGetBetaUVars(
-   SCIP_PROBDATA*        probdata            /**< problem data */
-   )
-{
-   assert(probdata != NULL);
-   return probdata->beta_u_vars;
-}
-
-
-SCIP_VAR** SCIPprobdataGetBetaVVars(
-   SCIP_PROBDATA*        probdata            /**< problem data */
-   )
-{
-   assert(probdata != NULL);
-   return probdata->beta_v_vars;
-}
-
 
 /** returns number of nodes */
 int SCIPprobdataGetNNodes(
@@ -2012,7 +1483,8 @@ int SCIPprobdataGetNNodes(
    )
 {
    assert(probdata != NULL);
-   return probdata->nnodes;
+   assert(probdata->res_graph != NULL);
+   return probdata->res_graph->nnodes;
 }
 
 /** returns number of edges */
@@ -2021,7 +1493,8 @@ int SCIPprobdataGetNEdges(
    )
 {
    assert(probdata != NULL);
-   return probdata->nedges;
+   assert(probdata->res_graph != NULL);
+   return probdata->res_graph->nedges;
 }
 
 /** returns array of edge tail nodes */
@@ -2030,7 +1503,8 @@ int* SCIPprobdataGetEdgeTails(
    )
 {
    assert(probdata != NULL);
-   return probdata->tail;
+   assert(probdata->res_graph != NULL);
+   return probdata->res_graph->tail;
 }
 
 /** returns array of edge head nodes */
@@ -2039,7 +1513,8 @@ int* SCIPprobdataGetEdgeHeads(
    )
 {
    assert(probdata != NULL);
-   return probdata->head;
+   assert(probdata->res_graph != NULL);
+   return probdata->res_graph->head;
 }
 
 /** returns adjacency list for a given node */
@@ -2049,8 +1524,20 @@ int* SCIPprobdataGetAdjList(
    )
 {
    assert(probdata != NULL);
-   assert(node >= 0 && node < probdata->nnodes);
-   return probdata->adj_lists[node];
+   assert(probdata->res_graph != NULL);
+   assert(node >= 0 && node < probdata->res_graph->nnodes);
+   return probdata->res_graph->adj_lists[node];
+}
+
+
+/** returns all adjacency lists */
+int** SCIPprobdataGetAdjLists(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   )
+{
+   assert(probdata != NULL);
+   assert(probdata->res_graph != NULL);
+   return probdata->res_graph->adj_lists;
 }
 
 /** returns size of adjacency list for a given node */
@@ -2060,8 +1547,19 @@ int SCIPprobdataGetAdjSize(
    )
 {
    assert(probdata != NULL);
-   assert(node >= 0 && node < probdata->nnodes);
-   return probdata->adj_sizes[node];
+   assert(probdata->res_graph != NULL);
+   assert(node >= 0 && node < probdata->res_graph->nnodes);
+   return probdata->res_graph->node_degree[node];
+}
+
+/** returns size of adjacency list for all nodes */
+int* SCIPprobdataGetAdjSizes(
+   SCIP_PROBDATA*        probdata           /**< problem data */
+   )
+{
+   assert(probdata != NULL);
+   assert(probdata->res_graph != NULL);
+   return probdata->res_graph->node_degree;
 }
 
 /** returns degree of a given node */
@@ -2071,17 +1569,37 @@ int SCIPprobdataGetNodeDegree(
    )
 {
    assert(probdata != NULL);
-   assert(node >= 0 && node < probdata->nnodes);
-   return probdata->node_degree[node];
+   assert(probdata->res_graph != NULL);
+   assert(node >= 0 && node < probdata->res_graph->nnodes);
+   return probdata->res_graph->node_degree[node];
 }
 
 /** returns parameter k */
-int SCIPprobdataGetK(
+int SCIPprobdataGetk(
    SCIP_PROBDATA*        probdata            /**< problem data */
    )
 {
    assert(probdata != NULL);
    return probdata->k;
+}
+
+/** returns minimum connectivity value */
+int SCIPprobdataGetMinConnectivity(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   )
+{
+   assert(probdata != NULL);
+   return probdata->min_connectivity;
+}
+
+/** returns graph structure */
+Graph* SCIPprobdataGetGraph(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   )
+{
+   assert(probdata != NULL);
+   assert(probdata->res_graph != NULL);
+   return probdata->res_graph;
 }
 
 
@@ -2103,48 +1621,96 @@ SCIP_Bool SCIPprobdataAreAdjacent(
    )
 {
    assert(probdata != NULL);
-   assert(node1 >= 0 && node1 < probdata->nnodes);
-   assert(node2 >= 0 && node2 < probdata->nnodes);
-   return probdata->adj_matrix[node1][node2];
+   assert(probdata->res_graph != NULL);
+   assert(node1 >= 0 && node1 < probdata->res_graph->nnodes);
+   assert(node2 >= 0 && node2 < probdata->res_graph->nnodes);
+   return (probdata->res_graph->adj_matrix[node1][node2] ? TRUE : FALSE);
 }
 
 /** returns adjacency matrix */
-SCIP_Bool** SCIPprobdataGetAdjMatrix(
+bool** SCIPprobdataGetAdjMatrix(
    SCIP_PROBDATA*        probdata            /**< problem data */
    )
 {
    assert(probdata != NULL);
-   return probdata->adj_matrix;
+   assert(probdata->res_graph != NULL);
+
+   return probdata->res_graph->adj_matrix;
 }
 
-/** returns main alpha constraint */
-SCIP_CONS* SCIPprobdataGetMainAlphaConstr(
+
+/** returns alpha cardinality constraint */
+SCIP_CONS* SCIPprobdataGetAlphaCardinalityConstr(
    SCIP_PROBDATA*        probdata            /**< problem data */
    )
 {
    assert(probdata != NULL);
-   return probdata->main_alpha_constr;
+   return probdata->alpha_cardinality_constr;
 }
 
-<<<<<<< Updated upstream
-/** returns |E|-set of alpha constraints */
-SCIP_CONS** SCIPprobdataGetAlphaConstrs(
-   SCIP_PROBDATA*        probdata            /**< problem data */
-   )
-{
-   assert(probdata != NULL);
-   return probdata->alpha_constrs;
-}
-=======
->>>>>>> Stashed changes
 
 /** returns |V|-set of coverage constraints */
-SCIP_CONS** SCIPprobdataGetCoverageConstrs(
+SCIP_CONS** SCIPprobdataGetVertexCoverConstrs(
    SCIP_PROBDATA*        probdata            /**< problem data */
    )
 {
    assert(probdata != NULL);
-   return probdata->coverage_constrs;
+   return probdata->vertex_cover_constrs;
+}
+
+/** returns |C|-set of clique constraints */
+SCIP_CONS** SCIPprobdataGetCliqueConstrs(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   )
+{
+   assert(probdata != NULL);
+   return probdata->clique_constrs; 
+}
+
+/** returns preprocessing fixed nodes array */
+bool* SCIPprobdataGetPreFixed(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   )
+{
+   assert(probdata != NULL);
+   return probdata->preFixed;
+}
+
+/** returns number of fixed nodes in preprocessing */
+int SCIPprobdataGetNFixed(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   )
+{
+   assert(probdata != NULL);
+   return probdata->n_fixed;
+}
+
+/** returns number of cliques */
+int SCIPprobdataGetNCliques(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   )
+{
+   assert(probdata != NULL);
+   return probdata->n_cliques;
+}
+
+
+/** returns lexicographic reduction data */
+SCIP_LEXREDDATA* SCIPgetProbdataLexreddata(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   )
+{
+   assert(probdata != NULL);
+   return probdata->lexreddata;
+}
+
+/** returns orbital reduction data */
+SCIP_ORBITALREDDATA* SCIPgetProbdataOrbitalreddata(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   )
+{
+   assert(probdata != NULL);
+   return probdata->orbitalreddata;
 }
 
 

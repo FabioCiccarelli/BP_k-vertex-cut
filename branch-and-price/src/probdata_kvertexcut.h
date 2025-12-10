@@ -35,7 +35,9 @@
 #define __SCIP_PROBDATA_KVERTEXCUT__
 
 #include "scip/scip.h"
-#include "global_variables.h"
+#include "graph.h"
+#include "scip/symmetry_orbital.h"
+#include "scip/symmetry_lexred.h"
 
 /** sets up the problem data */
 SCIP_RETCODE SCIPprobdataCreate(
@@ -75,10 +77,20 @@ int* SCIPprobdataGetAdjList(
    int                   node                /**< node index */
    );
 
+/** returns all adjacency lists */
+int** SCIPprobdataGetAdjLists(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   );
+
 /** returns size of adjacency list for a given node */
 int SCIPprobdataGetAdjSize(
    SCIP_PROBDATA*        probdata,           /**< problem data */
    int                   node                /**< node index */
+   );
+
+/** returns size of adjacency list for all nodes */
+int* SCIPprobdataGetAdjSizes(
+   SCIP_PROBDATA*        probdata           /**< problem data */
    );
 
 /** returns degree of a given node */
@@ -92,8 +104,6 @@ int SCIPprobdataGetk(
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 
-<<<<<<< Updated upstream
-=======
 /** returns graph structure */
 Graph* SCIPprobdataGetGraph(
    SCIP_PROBDATA*        probdata            /**< problem data */
@@ -104,9 +114,8 @@ Graph* SCIPprobdataGetOrigGraph(
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 
->>>>>>> Stashed changes
 /** returns adjacency matrix */
-SCIP_Bool** SCIPprobdataGetAdjMatrix(
+bool** SCIPprobdataGetAdjMatrix(
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 
@@ -127,17 +136,12 @@ SCIP_VAR** SCIPprobdataGetXVars(
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 
-SCIP_VAR** SCIPprobdataGetZUVars(
+
+/** returns number of variables */
+int SCIPprobdataGetNAlphaVars(
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 
-<<<<<<< Updated upstream
-SCIP_VAR** SCIPprobdataGetZVVars(
-   SCIP_PROBDATA*        probdata            /**< problem data */
-   );
-
-SCIP_VAR** SCIPprobdataGetBetaUVars(
-=======
 /** returns array of clique cuts */
 SCIP_ROW** SCIPprobdataGetCliqueCuts(
    SCIP_PROBDATA*        probdata            /**< problem data */
@@ -151,32 +155,46 @@ int SCIPprobdataGetNCliqueCuts(
 
 /** returns array of coverage constraints */
 SCIP_CONS** SCIPprobdataGetVertexCoverConstrs(
->>>>>>> Stashed changes
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 
-
-SCIP_VAR** SCIPprobdataGetBetaVVars(
+/** returns array of clique constraints */
+SCIP_CONS** SCIPprobdataGetCliqueConstrs(
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 
-/** returns number of variables */
-int SCIPprobdataGetNAlphaVars(
+/** returns alpha cardinality constraint */
+SCIP_CONS* SCIPprobdataGetAlphaCardinalityConstr(
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 
-/** returns array of set pricing constraints */
-SCIP_CONS** SCIPprobdataGetAlphaConstrs(
+/** returns preprocessing fixed nodes array */
+bool* SCIPprobdataGetPreFixed(
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 
-/** returns array of coverage constraints */
-SCIP_CONS** SCIPprobdataGetCoverageConstrs(
+/** returns number of fixed nodes in preprocessing */
+int SCIPprobdataGetNFixed(
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 
-/** returns main pricing constraint */
-SCIP_CONS* SCIPprobdataGetMainAlphaConstr(
+/** returns number of cliques */
+int SCIPprobdataGetNCliques(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   );
+
+/** returns minimum connectivity of the residual graph */
+int SCIPprobdataGetMinConnectivity(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   );
+
+/** returns lexicographic reduction data */
+SCIP_LEXREDDATA* SCIPgetProbdataLexreddata(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   );
+
+/** returns orbital reduction data */
+SCIP_ORBITALREDDATA* SCIPgetProbdataOrbitalreddata(
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 

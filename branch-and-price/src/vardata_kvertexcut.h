@@ -15,14 +15,9 @@
 SCIP_RETCODE SCIPvardataCreateKvertexcut(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_VARDATA**        vardata,            /**< pointer to vardata */
-<<<<<<< Updated upstream
-   int*                  subset,             /**< array of nodes in the subset S */
-   int                   subsetsize         /**< size of the subset S */
-=======
    int*                  subset,             /**< array of vertices in the subset S */
    int                   subsetsize,         /**< size of the subset S */
    int                   nnodes              /**< number of vertices in the graph */
->>>>>>> Stashed changes
    );
 
 /** get size of the subset S */

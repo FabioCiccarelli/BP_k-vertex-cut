@@ -1,3 +1,27 @@
+#* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+#*                                                                           *
+#*                  This file is part of the program and library             *
+#*         SCIP --- Solving Constraint Integer Programs                      *
+#*                                                                           *
+#*  Copyright (c) 2002-2025 Zuse Institute Berlin (ZIB)                      *
+#*                                                                           *
+#*  Licensed under the Apache License, Version 2.0 (the "License");          *
+#*  you may not use this file except in compliance with the License.         *
+#*  You may obtain a copy of the License at                                  *
+#*                                                                           *
+#*      http://www.apache.org/licenses/LICENSE-2.0                           *
+#*                                                                           *
+#*  Unless required by applicable law or agreed to in writing, software      *
+#*  distributed under the License is distributed on an "AS IS" BASIS,        *
+#*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. *
+#*  See the License for the specific language governing permissions and      *
+#*  limitations under the License.                                           *
+#*                                                                           *
+#*  You should have received a copy of the Apache-2.0 license                *
+#*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         *
+#*                                                                           *
+#* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+
 #@file    Makefile
 #@brief   Makefile for k-vertex cut SCIP project
 #@author  Fabio Ciccarelli
@@ -6,16 +30,15 @@
 # path (MODIFY IF YOU CHANGE MACHINE)
 #-----------------------------------------------------------------------------
 
-SCIPDIR         =       /home/fabio/scipoptsuite-9.2.3/scip
+SCIPDIR         =       $(SCIP_PATH)
 
 #-----------------------------------------------------------------------------
 # Gurobi configuration
 #-----------------------------------------------------------------------------
 
-GUROBIDIR       =       /home/fabio/gurobi1201/linux64
+GUROBIDIR       =       $(GUROBI_HOME)
 GUROBILIBDIR    =       $(GUROBIDIR)/lib
 GUROBIINCDIR    =       $(GUROBIDIR)/include
-
 
 #-----------------------------------------------------------------------------
 # include default project Makefile from SCIP (need to do this twice, once to
@@ -57,18 +80,12 @@ CXXMAINOBJ	=	main.o \
 		        reader_kvertexcut.o \
 		        vardata_kvertexcut.o \
 		        pricer_kvertexcut.o \
-<<<<<<< Updated upstream
-		        pricing_algo.o \
-			global_variables.o \
-			propagator.o
-=======
 			graph.o \
 			preprocessing.o \
 			min_cut_pricer.o \
 			plugins.o \
 			custom_compute_symmetry.o \
 			prop_problemsymmetry.o 
->>>>>>> Stashed changes
 
 MAINSRC		=	$(addprefix $(SRCDIR)/,$(CMAINOBJ:.o=.c))
 MAINSRC		+=	$(addprefix $(SRCDIR)/,$(CXXMAINOBJ:.o=.cpp))
@@ -84,6 +101,7 @@ MAINOBJFILES	+=	$(addprefix $(OBJDIR)/,$(CXXMAINOBJ))
 #-----------------------------------------------------------------------------
 
 FLAGS		+=	-I$(GUROBIINCDIR)
+CXXFLAGS	+=	-std=c++17
 LDFLAGS		+=	-L$(GUROBILIBDIR) -lgurobi_c++ -lgurobi120 -lm -Wl,-rpath,$(GUROBILIBDIR)
 
 #-----------------------------------------------------------------------------
