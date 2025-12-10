@@ -1,4 +1,3 @@
-./branch-and-price/bin
-./branch-and-price/bin/*
-./branch-and-price/obj
-./branch-and-price/obj/*
+branch-and-price/bin/*
+branch-and-price/obj/*
+*~
