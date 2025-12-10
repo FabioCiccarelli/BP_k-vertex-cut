@@ -1,37 +1,11 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/*                                                                           */
-/*                  This file is part of the program and library             */
-/*         SCIP --- Solving Constraint Integer Programs                      */
-/*                                                                           */
-/*  Copyright (c) 2002-2025 Zuse Institute Berlin (ZIB)                      */
-/*                                                                           */
-/*  Licensed under the Apache License, Version 2.0 (the "License");          */
-/*  you may not use this file except in compliance with the License.         */
-/*  You may obtain a copy of the License at                                  */
-/*                                                                           */
-/*      http://www.apache.org/licenses/LICENSE-2.0                           */
-/*                                                                           */
-/*  Unless required by applicable law or agreed to in writing, software      */
-/*  distributed under the License is distributed on an "AS IS" BASIS,        */
-/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
-/*  See the License for the specific language governing permissions and      */
-/*  limitations under the License.                                           */
-/*                                                                           */
-/*  You should have received a copy of the Apache-2.0 license                */
-/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
-/*                                                                           */
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
-/**@file   PRICER_NEW.cpp
+/**@file   pricer_kvertexcut.cpp
  * @brief  k-vertex cut variable pricer
  * @author Fabio Ciccarelli
  *
- * This file implements the variable pricer which check if variables exist with negative reduced cost. See
- * @ref KVERTEXCUT_PRICER for more details.
+ * This file implements the variable pricer which check if variables exist with negative reduced cost. 
+ * If such variables exist, they are added to the LP.
  *
- */
-
-/*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
+**/
 
 #include <assert.h>
 #include <string.h>
@@ -50,11 +24,10 @@
 #include <iostream>
 using namespace std;
 
-/**@name Pricer properties
+/** Pricer properties
  *
- * @{
- */
-
+ * 
+ **/
 #define PRICER_NAME            "kvertexcut"
 #define PRICER_DESC            "pricer for k-vertex cut tours"
 #define PRICER_PRIORITY        0
@@ -70,9 +43,15 @@ using namespace std;
 /** @brief Variable pricer data used in the \ref pricer_kvertexcut.cpp "pricer" */
 struct SCIP_PricerData
 {
+<<<<<<< Updated upstream
    SCIP_CONS*            main_alpha_constr;          /**< main pricing constraint for α_S */
    SCIP_CONS**           alpha_constrs;              /**< array of pricing constraints for α_S */
    SCIP_CONS**           coverage_constrs;         /**< array of coverage constraints for SCCs */
+=======
+   SCIP_CONS*            alpha_cardinality_constr;   /**< cardinality constraint for α variables */
+   SCIP_CONS**           vertex_cover_constrs;         /**< array of vertex cover constraints */
+   SCIP_CONS**           clique_constrs;           /**< array of clique constraints */
+>>>>>>> Stashed changes
    int                   nnodes;                     /**< number of nodes in the graph */
    int                   nedges;                     /**< number of edges in the graph */
    GRBModel*             gurobi_model;               /**< Gurobi model for pricing problem */
@@ -94,13 +73,18 @@ SCIP_RETCODE doPricing(
    )
 {
    SCIP_PRICERDATA* pricerdata;
+<<<<<<< Updated upstream
    SCIP_CONS*            main_alpha_constr;          /**< main pricing constraint for α_S */
    SCIP_CONS**           alpha_constrs;              /**< array of pricing constraints for α_S */
    SCIP_CONS**           coverage_constrs;         /**< array of coverage constraints for SCCs */
+=======
+   SCIP_CONS*            alpha_cardinality_constr;   /**< cardinality constraint for α variables */
+   SCIP_CONS**           vertex_cover_constrs;         /**< array of vertex cover constraints for SCCs */
+   SCIP_CONS**           clique_constrs;           /**< array of clique constraints */
+>>>>>>> Stashed changes
    SCIP_PROBDATA* probdata;
 
-   int* tail;
-   int* head;
+  
    int nnodes, nedges;
    SCIP_Bool addvar;
 
@@ -128,6 +112,7 @@ SCIP_RETCODE doPricing(
 
    SCIP_VAR** x_vars = SCIPprobdataGetXVars(probdata);
 
+<<<<<<< Updated upstream
    tail = SCIPprobdataGetEdgeTails(probdata);
    head = SCIPprobdataGetEdgeHeads(probdata);
 
@@ -136,6 +121,16 @@ SCIP_RETCODE doPricing(
    main_alpha_constr = pricerdata->main_alpha_constr;
    alpha_constrs = pricerdata->alpha_constrs;
    coverage_constrs = pricerdata->coverage_constrs;
+=======
+   int n_cliques = SCIPprobdataGetNCliques(probdata);
+   const std::vector<std::vector<bool>>* cliques = SCIPprobdataGetGraph(probdata)->getCliques();
+
+   nnodes = pricerdata->nnodes;
+   nedges = pricerdata->nedges;
+   alpha_cardinality_constr = pricerdata->alpha_cardinality_constr;
+   vertex_cover_constrs = pricerdata->vertex_cover_constrs;
+   clique_constrs = pricerdata->clique_constrs;
+>>>>>>> Stashed changes
 
    SCIP_NODE* node = SCIPgetCurrentNode(scip);
    int num_node = SCIPnodeGetNumber(node);
@@ -153,6 +148,7 @@ SCIP_RETCODE doPricing(
       return SCIP_OKAY;
    }
 
+<<<<<<< Updated upstream
    /* Prepare dual values array for edge variables (ψ values) */
    double* edge_dual_coeffs = new double[nedges];
    for( int i = 0; i < nedges; ++i )
@@ -160,11 +156,13 @@ SCIP_RETCODE doPricing(
       edge_dual_coeffs[i] = isfarkas ? SCIPgetDualfarkasLinear(scip, alpha_constrs[i]) : SCIPgetDualsolLinear(scip, alpha_constrs[i]);
       // cout << "Edge " << i << " dual coeff = " << edge_dual_coeffs[i] << endl;
    }
+=======
+>>>>>>> Stashed changes
 
    double* node_dual_coeffs = new double[nnodes];
    for( int i = 0; i < nnodes; ++i )
    {
-      node_dual_coeffs[i] = isfarkas ? SCIPgetDualfarkasLinear(scip, coverage_constrs[i]) : SCIPgetDualsolLinear(scip, coverage_constrs[i]);
+      node_dual_coeffs[i] = isfarkas ? SCIPgetDualfarkasLinear(scip, vertex_cover_constrs[i]) : SCIPgetDualsolLinear(scip, vertex_cover_constrs[i]);
       // cout << "Node " << i << " dual coeff = " << node_dual_coeffs[i] << endl;
    }
 
@@ -200,7 +198,15 @@ SCIP_RETCODE doPricing(
    /* Solve the pricing problem with Gurobi */
    PoolResult pricing_result = solve_pricing(pricerdata->gurobi_model, nnodes, nedges, pi_val);
 
+<<<<<<< Updated upstream
    addvar = FALSE;
+=======
+   /* Solve the pricing problem */
+   PoolResult pricing_result = pricerdata->min_cut_pricer->solve(nnodes, nedges, n_cliques, mu_val,
+                                                                 node_dual_coeffs, cl_dual_coeffs,
+                                                                 adj_lists, adj_sizes,
+                                                                 down_branched_vertices, up_branched_vertices, false);
+>>>>>>> Stashed changes
 
    // cout << "Pricing result: obj val = " << pricing_result.obj_val << endl;
 
@@ -244,7 +250,14 @@ SCIP_RETCODE doPricing(
             }
          }
 
+<<<<<<< Updated upstream
          if( subsetsize < 2 )  /* skip invalid subsets */
+=======
+         // cout << name << " variable being generated!" << endl;
+         // cin.get();
+
+         if( subsetsize < 2 )  /* skip invalid subsets (singletons are generated initially) */
+>>>>>>> Stashed changes
          {
             SCIPfreeBufferArray(scip, &subset);
             continue;
@@ -260,6 +273,7 @@ SCIP_RETCODE doPricing(
          addvar = TRUE;
          ++pricerdata->nodecnt;
 
+<<<<<<< Updated upstream
          // add the new variable to all the constraints where it appears
          for( i = 0; i < nedges; ++i )
          {
@@ -269,13 +283,19 @@ SCIP_RETCODE doPricing(
                overall_val += edge_dual_coeffs[i];
             }
          }
+=======
+>>>>>>> Stashed changes
 
          for( i = 0; i < nnodes; ++i )
          {
             if( subset[i] == 1 )
             {
+<<<<<<< Updated upstream
                SCIP_CALL( SCIPaddCoefLinear(scip, coverage_constrs[i], newvar, 1.0) );
                overall_val += node_dual_coeffs[i];
+=======
+               SCIP_CALL( SCIPaddCoefLinear(scip, vertex_cover_constrs[i], newvar, 1.0) );
+>>>>>>> Stashed changes
             }
          }
 
@@ -300,7 +320,6 @@ SCIP_RETCODE doPricing(
    }
 
    /* Clean up */
-   delete[] edge_dual_coeffs;
    delete[] node_dual_coeffs;
 
    (*result) = SCIP_SUCCESS;
@@ -337,8 +356,13 @@ SCIP_DECL_PRICERFREE(pricerFreeKvertexcut)
       }
 
       /* free memory */
+<<<<<<< Updated upstream
       SCIPfreeBlockMemoryArrayNull(scip, &pricerdata->alpha_constrs, pricerdata->nedges);
       SCIPfreeBlockMemoryArrayNull(scip, &pricerdata->coverage_constrs, pricerdata->nnodes);
+=======
+      SCIPfreeBlockMemoryArrayNull(scip, &pricerdata->vertex_cover_constrs, pricerdata->nnodes);
+      SCIPfreeBlockMemoryArrayNull(scip, &pricerdata->clique_constrs, pricerdata->n_cliques);
+>>>>>>> Stashed changes
 
       SCIPfreeBlockMemory(scip, &pricerdata);
    }
@@ -361,33 +385,18 @@ SCIP_DECL_PRICERINIT(pricerInitKvertexcut)
    pricerdata = SCIPpricerGetData(pricer);
    assert(pricerdata != NULL);
 
-   /* get transformed constraints */
-   for( i = 0; i < pricerdata->nedges; ++i )
-   {
-      cons = pricerdata->alpha_constrs[i];
-
-      /* release original constraint */
-      SCIP_CALL( SCIPreleaseCons(scip, &pricerdata->alpha_constrs[i]) );
-
-      /* get transformed constraint */
-      SCIP_CALL( SCIPgetTransformedCons(scip, cons, &pricerdata->alpha_constrs[i]) );
-
-      /* capture transformed constraint */
-      SCIP_CALL( SCIPcaptureCons(scip, pricerdata->alpha_constrs[i]) );
-   }
-
    for( i = 0; i < pricerdata->nnodes; ++i )
    {
-      cons = pricerdata->coverage_constrs[i];
+      cons = pricerdata->vertex_cover_constrs[i];
 
       /* release original constraint */
-      SCIP_CALL( SCIPreleaseCons(scip, &pricerdata->coverage_constrs[i]) );
+      SCIP_CALL( SCIPreleaseCons(scip, &pricerdata->vertex_cover_constrs[i]) );
 
       /* get transformed constraint */
-      SCIP_CALL( SCIPgetTransformedCons(scip, cons, &pricerdata->coverage_constrs[i]) );
+      SCIP_CALL( SCIPgetTransformedCons(scip, cons, &pricerdata->vertex_cover_constrs[i]) );
 
       /* capture transformed constraint */
-      SCIP_CALL( SCIPcaptureCons(scip, pricerdata->coverage_constrs[i]) );
+      SCIP_CALL( SCIPcaptureCons(scip, pricerdata->vertex_cover_constrs[i]) );
    }
 
    /* get transformed main constraint */
@@ -413,17 +422,11 @@ SCIP_DECL_PRICEREXITSOL(pricerExitsolKvertexcut)
    pricerdata = SCIPpricerGetData(pricer);
    assert(pricerdata != NULL);
 
-   /* get release constraints */
-   for( i = 0; i < pricerdata->nedges; ++i )
-   {
-      /* release constraint */
-      SCIP_CALL( SCIPreleaseCons(scip, &(pricerdata->alpha_constrs[i])) );
-   }
 
    for( i = 0; i < pricerdata->nnodes; ++i )
    {
       /* release constraint */
-      SCIP_CALL( SCIPreleaseCons(scip, &(pricerdata->coverage_constrs[i])) );
+      SCIP_CALL( SCIPreleaseCons(scip, &(pricerdata->vertex_cover_constrs[i])) );
    }
 
    /* release main constraint */
@@ -438,11 +441,16 @@ SCIP_DECL_PRICERREDCOST(pricerRedcostKvertexcut)
 {  /*lint --e{715}*/
    SCIP_CALL( doPricing(scip, pricer, FALSE, result) );
 
+<<<<<<< Updated upstream
    if( *result == SCIP_DIDNOTRUN )
    {
       *stopearly = TRUE;
    }
   *lowerbound = 1.0;
+=======
+
+   SCIP_CALL( doPricing(scip, pricer, FALSE, lowerbound, stopearly, result) );
+>>>>>>> Stashed changes
    
    return SCIP_OKAY;
 }
@@ -452,9 +460,14 @@ static
 SCIP_DECL_PRICERFARKAS(pricerFarkasKvertexcut)
 {  /*lint --e{715}*/
 
+<<<<<<< Updated upstream
    SCIP_CALL( doPricing(scip, pricer, TRUE, result) );
    // (*result) = SCIP_SUCCESS;
 
+=======
+   SCIP_CALL( doPricing(scip, pricer, TRUE, NULL, NULL, result) );
+   
+>>>>>>> Stashed changes
    return SCIP_OKAY;
 }
 
@@ -477,9 +490,15 @@ SCIP_RETCODE SCIPincludePricerKvertexcut(
    /* create k-vertex-cut variable pricer data */
    SCIP_CALL( SCIPallocBlockMemory(scip, &pricerdata) );
 
+<<<<<<< Updated upstream
    pricerdata->main_alpha_constr = NULL;
    pricerdata->alpha_constrs = NULL;
    pricerdata->coverage_constrs = NULL;
+=======
+   pricerdata->alpha_cardinality_constr = NULL;
+   pricerdata->vertex_cover_constrs = NULL;
+   pricerdata->clique_constrs = NULL;
+>>>>>>> Stashed changes
    pricerdata->nnodes = 0;
    pricerdata->nedges = 0;
    pricerdata->gurobi_model = NULL;
@@ -504,9 +523,15 @@ SCIP_RETCODE SCIPincludePricerKvertexcut(
 /** added problem specific data to pricer and activates pricer */
 SCIP_RETCODE SCIPpricerKvertexcutActivate(
    SCIP*                 scip,               /**< SCIP data structure */
+<<<<<<< Updated upstream
    SCIP_CONS*            main_alpha_constr,  /**< main alpha constraint */
    SCIP_CONS**           alpha_constrs,      /**< other alpha constraints */
    SCIP_CONS**           coverage_constrs,   /**< coverage constraints */ 
+=======
+   SCIP_CONS*            alpha_cardinality_constr,  /**< alpha cardinality constraint */
+   SCIP_CONS**           vertex_cover_constrs,   /**< vertex cover constraints */
+   SCIP_CONS**           clique_constrs,     /**< clique constraints */
+>>>>>>> Stashed changes
    int                   nnodes,             /**< number of nodes in the graph */
    int                   nedges              /**< number of edges in the graph */
    )
@@ -514,14 +539,18 @@ SCIP_RETCODE SCIPpricerKvertexcutActivate(
    SCIP_PRICER* pricer;
    SCIP_PRICERDATA* pricerdata;
    SCIP_PROBDATA* probdata;
-   int* tail;
-   int* head;
    int c;
 
    assert(scip != NULL);
+<<<<<<< Updated upstream
    assert(main_alpha_constr != NULL);
    assert(alpha_constrs != NULL);
    assert(coverage_constrs != NULL);
+=======
+   assert(alpha_cardinality_constr != NULL);
+   assert(vertex_cover_constrs != NULL);
+   assert(clique_constrs != NULL);
+>>>>>>> Stashed changes
    assert(nnodes > 0);
    assert(nedges > 0);
 
@@ -533,16 +562,29 @@ SCIP_RETCODE SCIPpricerKvertexcutActivate(
 
    /* get problem data */
    probdata = SCIPgetProbData(scip);
-   tail = SCIPprobdataGetEdgeTails(probdata);
-   head = SCIPprobdataGetEdgeHeads(probdata);
+
 
    /* copy arrays */
+<<<<<<< Updated upstream
    SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &pricerdata->alpha_constrs, alpha_constrs, nedges) );
    SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &pricerdata->coverage_constrs, coverage_constrs, nnodes) );
 
    pricerdata->nnodes = nnodes;
    pricerdata->nedges = nedges;
    pricerdata->main_alpha_constr = main_alpha_constr;
+=======
+   SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &pricerdata->vertex_cover_constrs, vertex_cover_constrs, nnodes) );
+   SCIP_CALL( SCIPduplicateBlockMemoryArray(scip, &pricerdata->clique_constrs, clique_constrs, n_cliques) );
+
+   pricerdata->nnodes = nnodes;
+   pricerdata->nedges = nedges;
+   pricerdata->n_cliques = n_cliques;
+   pricerdata->alpha_cardinality_constr = alpha_cardinality_constr;
+
+   bool** adj_matr = SCIPprobdataGetAdjMatrix(probdata);
+   const std::vector<std::vector<bool>>* cliques = SCIPprobdataGetGraph(probdata)->getCliques();
+   pricerdata->min_cut_pricer = new MinCutPricer(nnodes, adj_matr, n_cliques, cliques);
+>>>>>>> Stashed changes
 
    /* Initialize Gurobi model for pricing problem */
    pricerdata->gurobi_model = init_LP_pricer(nedges, nnodes, tail, head);
@@ -556,15 +598,10 @@ SCIP_RETCODE SCIPpricerKvertexcutActivate(
    SCIPdebugMsg(scip, "   nnodes: %d nedges: %d  \n", nnodes, nedges);
    SCIPdebugMsg(scip, "   Gurobi model initialized successfully\n");
 
-   /* capture all constraints */
-   for( c = 0; c < nedges; ++c )
-   {
-      SCIP_CALL( SCIPcaptureCons(scip, alpha_constrs[c]) );
-   }
 
    for( c = 0; c < nnodes; ++c )
    {
-      SCIP_CALL( SCIPcaptureCons(scip, coverage_constrs[c]) );
+      SCIP_CALL( SCIPcaptureCons(scip, vertex_cover_constrs[c]) );
    }
 
    SCIP_CALL( SCIPcaptureCons(scip, main_alpha_constr) );

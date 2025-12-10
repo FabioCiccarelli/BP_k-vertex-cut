@@ -1,6 +1,17 @@
-k=20
-limits/time=1800.0
+params/k=20
+limits/time=3600.0
+options/weighted=FALSE
+output/results="./"
+output/solution="./"
+output/plot="./"
+options/plot=FALSE
+options/connectivity/cut=TRUE
+options/connectivity/warmstart=TRUE
+options/relaxconstraints=TRUE
+options/cliquegeneration=2
+options/symmetrymethod=2
 ########################################################
+<<<<<<< Updated upstream
 table/nlhdlr/active = FALSE
 table/estim/active = FALSE
 table/scheduler/active = FALSE
@@ -32,6 +43,8 @@ table/root/active = FALSE
 table/solution/active = TRUE
 table/concurrentsolver/active = FALSE
 
+=======
+>>>>>>> Stashed changes
 
 
 

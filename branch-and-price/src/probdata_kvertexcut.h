@@ -45,7 +45,8 @@ SCIP_RETCODE SCIPprobdataCreate(
    int                   nedges,             /**< number of edges in the graph */
    int*                  tail,              /**< array of edge tail nodes */
    int*                  head,              /**< array of edge head nodes */
-   int                   k                   /**< parameter k for k-vertex cut */
+   int                   k,                   /**< parameter k for k-vertex cut */
+   int*                  vertex_weights     /**< array of vertex weights */
    );
 
 /** returns number of nodes */
@@ -91,6 +92,19 @@ int SCIPprobdataGetk(
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 
+<<<<<<< Updated upstream
+=======
+/** returns graph structure */
+Graph* SCIPprobdataGetGraph(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   );
+
+/** returns graph structure */
+Graph* SCIPprobdataGetOrigGraph(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   );
+
+>>>>>>> Stashed changes
 /** returns adjacency matrix */
 SCIP_Bool** SCIPprobdataGetAdjMatrix(
    SCIP_PROBDATA*        probdata            /**< problem data */
@@ -117,11 +131,27 @@ SCIP_VAR** SCIPprobdataGetZUVars(
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 
+<<<<<<< Updated upstream
 SCIP_VAR** SCIPprobdataGetZVVars(
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 
 SCIP_VAR** SCIPprobdataGetBetaUVars(
+=======
+/** returns array of clique cuts */
+SCIP_ROW** SCIPprobdataGetCliqueCuts(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   );
+
+/**returns number of clique cuts */
+int SCIPprobdataGetNCliqueCuts(
+   SCIP_PROBDATA*        probdata            /**< problem data */
+   );
+
+
+/** returns array of coverage constraints */
+SCIP_CONS** SCIPprobdataGetVertexCoverConstrs(
+>>>>>>> Stashed changes
    SCIP_PROBDATA*        probdata            /**< problem data */
    );
 
@@ -155,6 +185,29 @@ SCIP_RETCODE SCIPprobdataAddVar(
    SCIP*                 scip,               /**< SCIP data structure */
    SCIP_PROBDATA*        probdata,           /**< problem data */
    SCIP_VAR*             var                 /**< variables to add */
+   );
+
+SCIP_RETCODE SCIPprobdataAddCliqueCut(
+   SCIP*                 scip,               /**< SCIP data structure */
+   SCIP_PROBDATA*        probdata,           /**< problem data */
+   SCIP_ROW*             cut,              /**< cut to add */
+   int*                  clique             /**< clique associated with the cut */
+   );
+
+/** returns solution value as cut array and updates total cut cost */
+bool* SCIPprobdataGetSolution(
+   SCIP*                 scip,               /**< SCIP data structure */
+   SCIP_PROBDATA*        probdata,           /**< problem data */
+   int&                  tot_cut_cost        /**< reference to store total cut cost */
+   );
+
+/** plots the solution to a PNG file */
+SCIP_RETCODE SCIPprobdataPlotSolution(
+   Graph*                graph,           /**< instance graph */
+   bool*                 cut,                /**< cut array */
+   const char*           filename,            /**< output filename */
+   bool                  draw_attacked_edges,       /**< whether to highlight cut nodes */
+   bool                  plot_graph            /**< whether to plot the graph */
    );
 
 #endif

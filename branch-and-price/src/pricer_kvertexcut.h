@@ -25,12 +25,9 @@
 /**@file   pricer_kvertexcut.h
  * @brief  k-vertex cut variable pricer
  * @author Fabio Ciccarelli
- *
- * This file implements the variable pricer which check if variables exist with negative reduced cost. 
- */
+ **/
 
-/*---+----1----+----2----+----3----+----4----+----5----+----6----+----7----+----8----+----9----+----0----+----1----+----2*/
-
+ 
 #ifndef __PRICER_KVERTEXCUT__
 #define __PRICER_KVERTEXCUT__
 
@@ -46,8 +43,12 @@ SCIP_RETCODE SCIPincludePricerKvertexcut(
 /** activates k-vertex cut pricer */
 SCIP_RETCODE SCIPpricerKvertexcutActivate(  
    SCIP*                 scip,                       /**< SCIP data structure */
+<<<<<<< Updated upstream
    SCIP_CONS*            main_alpha_constr,          /**< main constraint */
    SCIP_CONS**           alpha_constrs,              /**< edge constraints array */
+=======
+   SCIP_CONS*            alpha_cardinality_constr,   /**< alpha cardinality constraint */
+>>>>>>> Stashed changes
    SCIP_CONS**           coverage_constrs,         /**< coverage constraints array */
    int                   nnodes,                     /**< number of nodes */
    int                   nedges                     /**< number of edges */

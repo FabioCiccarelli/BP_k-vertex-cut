@@ -1,40 +1,15 @@
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-/*                                                                           */
-/*                  This file is part of the program and library             */
-/*         SCIP --- Solving Constraint Integer Programs                      */
-/*                                                                           */
-/*  Copyright (c) 2002-2025 Zuse Institute Berlin (ZIB)                      */
-/*                                                                           */
-/*  Licensed under the Apache License, Version 2.0 (the "License");          */
-/*  you may not use this file except in compliance with the License.         */
-/*  You may obtain a copy of the License at                                  */
-/*                                                                           */
-/*      http://www.apache.org/licenses/LICENSE-2.0                           */
-/*                                                                           */
-/*  Unless required by applicable law or agreed to in writing, software      */
-/*  distributed under the License is distributed on an "AS IS" BASIS,        */
-/*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. */
-/*  See the License for the specific language governing permissions and      */
-/*  limitations under the License.                                           */
-/*                                                                           */
-/*  You should have received a copy of the Apache-2.0 license                */
-/*  along with SCIP; see the file LICENSE. If not visit scipopt.org.         */
-/*                                                                           */
-/* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
-
-/**@file   our_code/src/cmain.c
- * @brief  Main file for k-vertex cut pricing example
+/**@file   main.cpp
+ * @brief  Main file of our algorithm for the k-vertex cut pricing problem
  * @author Fabio Ciccarelli
  *
  *  This file contains the \ref main() main function of the project. This includes all the default plugins of
- *  \SCIP and the ones which belong to the k-vertex cut project. After that it starts the interactive shell of 
- *  \SCIP or processes the shell arguments if given.
- */
+ *  \SCIP and the ones which belong to the k-vertex cut project. 
+ **/
+
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
 #include <string>
-
 
 #include "scip/scip.h"
 #include "scip/scipshell.h"
@@ -43,6 +18,7 @@
 #include "pricer_kvertexcut.h"
 #include "reader_kvertexcut.h"
 #include "probdata_kvertexcut.h"
+<<<<<<< Updated upstream
 #include "propagator.h"
 
 #include "global_variables.h"
@@ -50,6 +26,12 @@
 using namespace std;
 
 // #define SERVER_CONDOR
+=======
+#include "plugins.h"
+
+using namespace std;
+
+>>>>>>> Stashed changes
 
 string getStatusString(SCIP_STATUS status) {
     switch (status) {
@@ -58,7 +40,6 @@ string getStatusString(SCIP_STATUS status) {
         case SCIP_STATUS_UNBOUNDED: return "Unbounded";
         case SCIP_STATUS_TIMELIMIT: return "TimeLimit";
         case SCIP_STATUS_USERINTERRUPT: return "UserInterrupt";
-        // Aggiungi altri casi se necessario
         default: return "Unknown";
     }
 }
@@ -90,8 +71,14 @@ SCIP_RETCODE runShell(
    
    /* include k-vertex cut pricer */
    SCIP_CALL( SCIPincludePricerKvertexcut(scip) );
+<<<<<<< Updated upstream
    /* include default SCIP plugins */
    SCIP_CALL( SCIPincludeDefaultPlugins(scip) );
+=======
+   
+   /* include SCIP plugins */
+   SCIP_CALL( SCIPincludePlugins(scip) );
+>>>>>>> Stashed changes
 
    SCIP_CALL(SCIPincludePropInterdiction(scip));
  
@@ -106,9 +93,49 @@ SCIP_RETCODE runShell(
    /* disable presolving for now to see the original formulation */
    SCIP_CALL( SCIPsetIntParam(scip, "presolving/maxrounds", 0) );
 
+<<<<<<< Updated upstream
+=======
+   /* disable output of original solution */
+   SCIP_CALL( SCIPsetBoolParam(scip, "misc/outputorigsol", FALSE) );
+
+   
+   /* PARAMETERS SPECIFIC FOR THE K-VERTEX CUT PROBLEM */
+
+   SCIP_CALL( SCIPaddStringParam(scip,
+      "output/results",                      
+      "Path of the file for output results", 
+      NULL,                        
+      FALSE,                    
+      ".",                                          
+      NULL, NULL) );
+
+   SCIP_CALL( SCIPaddStringParam(scip,
+      "output/solution",                      
+      "Path of the file for output solution", 
+      NULL,                        
+      FALSE,                    
+      ".",                                          
+      NULL, NULL) );
+
+   SCIP_CALL( SCIPaddStringParam(scip,
+      "output/plot",                      
+      "Path of the file for output plot", 
+      NULL,                        
+      FALSE,                    
+      ".",                                          
+      NULL, NULL) );
+
+   SCIP_CALL( SCIPaddBoolParam(scip,
+      "options/plot",                      
+      "option to enable plotting of the k-vertex cut problem solution (1: enable, 0: disable)", 
+      NULL,                        
+      FALSE,                    
+      0,                                                                   
+      NULL, NULL) );
+>>>>>>> Stashed changes
 
    SCIP_CALL( SCIPaddIntParam(scip,
-      "k",                      
+      "params/k",                      
       "Value of k in the k-vertex cut problem", 
       NULL,                        
       FALSE,                    
@@ -117,8 +144,89 @@ SCIP_RETCODE runShell(
       INT_MAX,                   
       NULL, NULL) );
 
+<<<<<<< Updated upstream
    SCIP_CALL( SCIPsetBoolParam(scip, "misc/outputorigsol", FALSE) );
  
+=======
+   SCIP_CALL( SCIPaddBoolParam(scip,
+      "options/weighted",                      
+      "option to solve the weighted version of the k-vertex cut problem (1: weighted, 0: unweighted)", 
+      NULL,                        
+      FALSE,                    
+      0,                                                                   
+      NULL, NULL) );
+
+
+   SCIP_CALL( SCIPaddBoolParam(scip,
+      "options/connectivity/warmstart",                      
+      "option to enable connectivity based warmstart (1: enable, 0: disable)", 
+      NULL,                        
+      FALSE,                    
+      1,                                                                   
+      NULL, NULL) );
+
+   SCIP_CALL( SCIPaddBoolParam(scip,
+      "options/ILPwarmstart",                      
+      "option to enable ILP based warmstart (1: enable, 0: disable)", 
+      NULL,                        
+      FALSE,                    
+      0,                                                                   
+      NULL, NULL) );
+
+   SCIP_CALL( SCIPaddBoolParam(scip,
+      "options/connectivity/cut",                      
+      "option to enable minimum connectivity cut (1: enable, 0: disable)", 
+      NULL,                        
+      FALSE,                    
+      1,                                                                   
+      NULL, NULL) );
+
+   SCIP_CALL( SCIPaddBoolParam(scip,
+      "options/solveLP",                      
+      "option to solve only the LP relaxation of the k-vertex cut problem (1: enable, 0: disable)", 
+      NULL,                        
+      FALSE,                    
+      0,                                                                   
+      NULL, NULL) );
+
+   SCIP_CALL( SCIPaddIntParam(scip, 
+      "options/symmetrymethod",
+      "symmetry handling method (0: none, 1: symresacks, 2: lex. red./orbital red.",
+      NULL, 
+      FALSE, 
+      2, 
+      0, 
+      2, 
+      NULL, NULL) );
+
+   SCIP_CALL( SCIPaddIntParam(scip, 
+      "options/cliquegeneration",
+      "clique generation method (0: single edges, 1: greedy maximal cliques",
+      NULL, 
+      FALSE, 
+      2, 
+      0, 
+      2, 
+      NULL, NULL) );
+
+   SCIP_CALL(SCIPaddBoolParam(scip,
+      "options/relaxconstraints",
+      "whether to relax the equality constraints to >= (1: yes, 0: no)",
+      NULL,
+      FALSE,
+      1,
+      NULL, NULL));
+   /**************************************************************************************************** */
+
+   
+   unsigned int LPonly;
+   SCIP_CALL( SCIPgetBoolParam(scip, "options/solveLP", &LPonly) );
+
+   if(LPonly) {
+      SCIP_CALL( SCIPsetIntParam(scip, "limits/nodes", 1) );
+   }
+
+>>>>>>> Stashed changes
    /**********************************
     * Process command line arguments *
    **********************************/
@@ -129,6 +237,7 @@ SCIP_RETCODE runShell(
     /**********************************
     * Write results in a file *
    **********************************/
+<<<<<<< Updated upstream
    // check if a solution has been found
    // the results file has name SCIPgetProbName(scip)_results_k{k value}.txt
 
@@ -142,8 +251,86 @@ SCIP_RETCODE runShell(
 #else
    sprintf(resultsFileName, "../results/%s_k%d.res", SCIPgetProbName(scip), k_val);
 #endif
-   
+=======
+   int k_val;
+   int sym_method;
+   int clique_gen_method;
+   unsigned int plot_option;
+   unsigned int option_conn_warmstart;
+   unsigned int option_conn_cut;
+   unsigned int weighted;
+   char* resultsFileName;
+   char* solutionsFileName;
+   char* plotFileName;
+   unsigned int relax_constraints;
+   unsigned int option_ILP_warmstart;
 
+   SCIPgetStringParam(scip, "output/results", &resultsFileName);
+   SCIPgetStringParam(scip, "output/solution", &solutionsFileName);
+   SCIPgetStringParam(scip, "output/plot", &plotFileName);
+   SCIPgetIntParam(scip, "params/k", &k_val);
+   SCIPgetIntParam(scip, "options/symmetrymethod", &sym_method);
+   SCIPgetIntParam(scip, "options/cliquegeneration", &clique_gen_method);
+   SCIPgetBoolParam(scip, "options/plot", &plot_option);
+   SCIPgetBoolParam(scip, "options/connectivity/warmstart", &option_conn_warmstart);
+   SCIPgetBoolParam(scip, "options/ILPwarmstart", &option_ILP_warmstart);
+   SCIPgetBoolParam(scip, "options/connectivity/cut", &option_conn_cut);
+   SCIPgetBoolParam(scip, "options/solveLP", &LPonly);
+   SCIPgetBoolParam(scip, "options/weighted", &weighted);
+   SCIPgetBoolParam(scip, "options/relaxconstraints", &relax_constraints);
+
+   // add the problem name to the results file path
+   if (strlen(resultsFileName) > 0) {
+      string resultsFilePath = string(resultsFileName) + "/" + string(SCIPgetProbName(scip)) + "_k" + to_string(k_val) + ".res";
+      resultsFileName = new char[resultsFilePath.length() + 1];
+      strcpy(resultsFileName, resultsFilePath.c_str());
+   } else {
+      cout << "No results file path provided." << endl;
+      exit(-1);
+   }
+
+   if (strlen(solutionsFileName) > 0) {
+      string solutionsFilePath = string(solutionsFileName) + "/" + string(SCIPgetProbName(scip)) + "_k" + to_string(k_val) + ".sol";
+      solutionsFileName = new char[solutionsFilePath.length() + 1];
+      strcpy(solutionsFileName, solutionsFilePath.c_str());
+   } else {
+      cout << "No solutions file path provided." << endl;
+      exit(-1);
+   }
+
+   if( strlen(plotFileName) > 0) {
+      if(plot_option) {
+         string plotFilePath = string(plotFileName) + "/" + string(SCIPgetProbName(scip)) + "_k" + to_string(k_val) + ".png"; 
+         plotFileName = new char[plotFilePath.length() + 1];
+         strcpy(plotFileName, plotFilePath.c_str());
+      }
+      else {
+         string plotFilePath = string(plotFileName) + "/" + string(SCIPgetProbName(scip)) + "_k" + to_string(k_val); 
+         plotFileName = new char[plotFilePath.length() + 1];
+         strcpy(plotFileName, plotFilePath.c_str());
+      }
+   } else {
+      cout << "No plot file path provided." << endl;
+      exit(-1);
+   }
+   
+   
+   SCIP_PROBDATA* probdata = SCIPgetProbData(scip);
+
+   int tot_cut_cost = 0;
+   Graph *orig_graph = SCIPprobdataGetOrigGraph(probdata);
+   bool* cut = SCIPprobdataGetSolution(scip, probdata, tot_cut_cost);
+   int preFixedCount = SCIPprobdataGetNFixed(probdata);
+   bool* preFixed = SCIPprobdataGetPreFixed(probdata);
+
+   int preFixedWeight = 0;
+   for(int v = 0; v < orig_graph->nnodes; v++) {
+      if(preFixed[v]) {
+         preFixedWeight += orig_graph->vertex_weights[v];
+      }
+   }
+>>>>>>> Stashed changes
+   
    ofstream resultsFile(resultsFileName, ios::app);
    if (resultsFile.is_open())
    {
@@ -151,16 +338,37 @@ SCIP_RETCODE runShell(
       const char* targetPricerName = "kvertexcut"; 
       SCIP_PRICER* targetPricer = SCIPfindPricer(scip, targetPricerName);
 
-      SCIP_PROBDATA* probdata = SCIPgetProbData(scip);
+      /* Create residual graph for statistics about prefixing effect */
+      vector<int> a;
+      vector<int> b;
+      cout << "\nCreating residual graph..." << endl;
+      Graph* without_prefixed = buildResidualGraph(*orig_graph, preFixed, a, b);
+      
 
       resultsFile 
                   << SCIPgetProbName(scip) << "\t"
-                  << SCIPprobdataGetNNodes(probdata) << "\t"
-                  << SCIPprobdataGetNEdges(probdata) << "\t"
+                  << orig_graph->nnodes << "\t"
+                  << orig_graph->nedges << "\t"
+                  << without_prefixed->nnodes << "\t"
+                  << without_prefixed->nedges << "\t"
                   << k_val << "\t"
+<<<<<<< Updated upstream
+=======
+                  << sym_method << "\t"
+                  << option_conn_warmstart << "\t"
+                  << option_ILP_warmstart << "\t"
+                  << option_conn_cut << "\t"
+                  << clique_gen_method << "\t"
+                  << relax_constraints << "\t"
+                  << LPonly << "\t"
+                  << weighted << "\t"
+                  << preFixedCount << "\t"
+                  << preFixedWeight << "\t"
+>>>>>>> Stashed changes
                   << getStatusString(SCIPgetStatus(scip)) << "\t"
                   << SCIPgetPrimalbound(scip) << "\t"
                   << SCIPgetDualbound(scip) << "\t"
+                  << tot_cut_cost << "\t"
                   << SCIPgetSolvingTime(scip) << "\t"
                   << SCIPpricerGetTime(targetPricer) << "\t"
                   << SCIPprobdataGetNAlphaVars(probdata) << "\t"
@@ -175,6 +383,7 @@ SCIP_RETCODE runShell(
                   << endl;
       resultsFile.close();
 
+<<<<<<< Updated upstream
       cout << "\n\n" << SCIPprobdataGetNAlphaVars(probdata) << " variables added to the master problem" << endl;
       cout << SCIPpricerGetTime(targetPricer) << " seconds spent in pricing" << endl;
       cout << SCIPgetNNodes(scip) << " branch-and-bound nodes processed\n\n" << endl;
@@ -224,61 +433,40 @@ SCIP_RETCODE runShell(
       allResultsFile.close();
    }
 
+=======
+      delete without_prefixed;
+>>>>>>> Stashed changes
 
-   if(SCIPgetStatus(scip) == SCIP_STATUS_OPTIMAL)
+   }
+   else
    {
-      char solutionsFileName[100];
-   
-   #ifdef SERVER_CONDOR
-      sprintf(solutionsFileName, "/home/fciccarelli/BP_kvertexcut/branch-and-price/solutions/%s_k%d.sol", SCIPgetProbName(scip), k_val);
-   #else
-      sprintf(solutionsFileName, "../solutions/%s_k%d.sol", SCIPgetProbName(scip), k_val);
-   #endif
+      cout << "\nError: could not open results file " << resultsFileName << endl;
+   }
 
-      if (SCIPgetBestSol(scip) != NULL) {
-         FILE* solFile = fopen(solutionsFileName, "w");
-         if (solFile != NULL) {
-            SCIP_CALL(SCIPprintBestSol(scip, solFile, FALSE));
-            fclose(solFile);
-            cout << "Solution written to " << solutionsFileName << endl;
-         } else {
-            cout << "Error: could not open solution file " << solutionsFileName << endl;
-         }
-      } 
-
-      // Create a second solution file, with .xsol extension, containing only the indices of the x variables set to 1
-      
-   #ifdef SERVER_CONDOR
-      sprintf(solutionsFileName, "/home/fciccarelli/BP_kvertexcut/branch-and-price/solutions/%s_k%d.xsol", SCIPgetProbName(scip), k_val);
-   #else
-      sprintf(solutionsFileName, "../solutions/%s_k%d.xsol", SCIPgetProbName(scip), k_val);
-   #endif
-
-      if (SCIPgetBestSol(scip) != NULL) {
-         int dummy = 0;
-         FILE* solFile = fopen(solutionsFileName, "w");
-         if (solFile != NULL) {
-            SCIP_PROBDATA* probdata = SCIPgetProbData(scip);
-            int nnodes = SCIPprobdataGetNNodes(probdata);
-            SCIP_VAR** x_vars = SCIPprobdataGetXVars(probdata);
-            for (int v = 0; v < nnodes; ++v) {
-               if (SCIPgetSolVal(scip, SCIPgetBestSol(scip), x_vars[v]) > 0.5) {
-                  dummy++;
-               }
-            }
-            fprintf(solFile, "%d\n", dummy);
-            for (int v = 0; v < nnodes; ++v) {
-               if (SCIPgetSolVal(scip, SCIPgetBestSol(scip), x_vars[v]) > 0.5) {
-                  fprintf(solFile, "%d\t", v);
-               }
-            }
-            fclose(solFile);
-            cout << "Compact solution written to " << solutionsFileName << "\n\n";
-         } else {
-            cout << "Error: could not open compact solution file " << solutionsFileName << "\n\n";
+   // Write the solution in the format tot_cut_cost \n vertices in cut separated by space
+   ofstream solFile(solutionsFileName);
+   if (solFile.is_open()) {
+      solFile << tot_cut_cost << "\n";
+      for (int v = 0; v < orig_graph->nnodes; ++v) {
+         if (cut[v]) {
+            solFile << v << " ";
          }
       }
+      solFile << "\n";
+      solFile.close();
+      cout << "Solution written to " << solutionsFileName << endl;
+   } else {
+      cout << "\nError: could not open solution file " << solutionsFileName << endl;
 
+      delete[] resultsFileName;
+      delete[] solutionsFileName;
+      delete[] plotFileName;
+      delete[] cut;
+
+      exit(-1);
+   }
+
+<<<<<<< Updated upstream
       int i,j;
 
       char *probname=new char[1000];
@@ -361,10 +549,16 @@ SCIP_RETCODE runShell(
       delete [] probname2;
       delete [] buf_;
       delete [] buf_COOR;
+=======
+   // Plot the solution graph
+   SCIP_CALL( SCIPprobdataPlotSolution(orig_graph, cut, plotFileName, false, plot_option) );
+>>>>>>> Stashed changes
 
-         
-   }
 
+   delete[] resultsFileName;
+   delete[] solutionsFileName;
+   delete[] plotFileName;
+   delete[] cut;
 
 
    
