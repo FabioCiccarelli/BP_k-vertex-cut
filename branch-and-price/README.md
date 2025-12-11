@@ -99,6 +99,6 @@ If `options/plot = 1`, generates `<output/plot>/<instance>_k<k>.png` visualizing
 Requires Graphviz. A `.dot` file is generated in any case if `options/plot = 0`.
 
 ## Notes
-- The directories in `output/*` must exist before running; otherwise execution aborts. If none is provided, the result and solution files are saved in the current directory.
+- The directories in `output/*` must exist before running; otherwise execution aborts. If they are provided,by default the result and solution files are saved in the current directory.
 - With `options/solveLP = 1`, the node limit is forced to 1 to retrieve only the LP solution.
 - For weighted runs, ensure the `.w` file is in the same directory of the `.dimacs` instance.
