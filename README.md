@@ -65,7 +65,7 @@ If you use this code in your research, please cite:
 ```bibtex
 @article{ciccarelli2024branch,
   title={Branch-and-price strikes back for the k-vertex cut problem},
-  author={Ciccarelli, Fabio and Furini, Fabrice and Hojny, Christopher and L{\"u}bbecke, Marco},
+  author={Ciccarelli, Fabio and Furini, Fabio and Hojny, Christopher and L{\"u}bbecke, Marco},
   year={2024}
 }
 ```
