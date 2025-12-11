@@ -1,4 +1,6 @@
 # Branch-and-Price for the k-Vertex Cut Problem
+[![DOI](https://zenodo.org/badge/1069071398.svg)](https://doi.org/10.5281/zenodo.17897865)
+
 
 
 <div align="center">
