@@ -1,5 +1,11 @@
 # Branch-and-Price for the k-Vertex Cut Problem
 
+
+<div align="center">
+   <img src="./logo.png" alt="Logo">
+</div>
+
+
 This repository contains the implementation and experimental data for the branch-and-price algorithm described in:
 
 > **Branch-and-price strikes back for the k-vertex cut problem**  
