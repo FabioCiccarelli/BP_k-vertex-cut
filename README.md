@@ -28,7 +28,7 @@ Computational results from experimental runs:
 ### Software dependencies
 - **[SCIP](https://www.scipopt.org/)** (≥ 8.0): optimization framework for branch-and-price.
 - **[Gurobi](https://www.gurobi.com/)**: used for preprocessing of the instances and ILP warm start.
-- **[LEMON](https://lemon.cs.elte.hu/)**: graph library used for solving max flow algorithms.
+- **[LEMON](https://lemon.cs.elte.hu/)**: graph library used for solving max flow problems.
 - **[Graphviz](https://graphviz.org/)** (optional): for solution visualization.
 
 ### Build dependencies
