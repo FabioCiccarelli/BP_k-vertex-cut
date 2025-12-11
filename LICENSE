@@ -1,0 +1,39 @@
+ACADEMIC AND RESEARCH LICENSE
+
+Copyright (c) 2025 Fabio Ciccarelli, Fabio Furini, Christopher Hojny, Marco Lübbecke
+
+Permission is hereby granted, free of charge, to any person or institution 
+obtaining a copy of this software and associated documentation files (the 
+"Software"), to use, copy, and modify the Software for academic and research 
+purposes only, subject to the following conditions:
+
+1. The above copyright notice and this permission notice shall be included in 
+   all copies or substantial portions of the Software.
+
+2. The Software may not be used for commercial purposes without prior written 
+   permission from the copyright holders. Commercial purposes include, but are 
+   not limited to:
+   - Use in a commercial product or service
+   - Use to provide commercial services
+   - Use in support of commercial activities
+
+3. Any publications, presentations, or other academic works that result from 
+   the use of this Software must cite the following paper:
+   
+   Ciccarelli, F., Furini, F., Hojny, C., and Lübbecke, M.
+   "Branch-and-price strikes back for the k-vertex cut problem"
+   (2025)
+
+4. Modifications to the Software may be made for research purposes, but 
+   modified versions must be clearly marked as such and may not be distributed 
+   without prior written permission from the copyright holders.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE 
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE 
+SOFTWARE.
+
+For permissions beyond the scope of this license, please contact the authors.

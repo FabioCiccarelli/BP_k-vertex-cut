@@ -172,7 +172,7 @@ SCIP_RETCODE runShell(
 
    SCIP_CALL( SCIPaddIntParam(scip, 
       "options/cliquegeneration",
-      "clique generation method (0: single edges, 1: greedy maximal cliques",
+      "clique generation method (0: single edges, 1: edge partitioning 2: edge covering)",
       NULL, 
       FALSE, 
       2, 
@@ -345,7 +345,7 @@ SCIP_RETCODE runShell(
       solFile << tot_cut_cost << "\n";
       for (int v = 0; v < orig_graph->nnodes; ++v) {
          if (cut[v]) {
-            solFile << v << " ";
+            solFile << v+1 << " ";
          }
       }
       solFile << "\n";

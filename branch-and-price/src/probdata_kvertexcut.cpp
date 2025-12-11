@@ -48,7 +48,7 @@
 
 using namespace std;
 
-/** forward declarations */
+/** forward declaration */
 static SCIP_RETCODE probdataFree(SCIP* scip, SCIP_PROBDATA** probdata);
 
 
