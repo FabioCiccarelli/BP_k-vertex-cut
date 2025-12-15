@@ -30,6 +30,8 @@ Benchmark instances for the k-vertex cut problem:
 Computational results from experimental runs:
 - `BPresults.xlsx`: complete branch-and-price computational results.
 - `bestKnownValues.xlsx`: best known solutions for benchmark instances.
+- `solutions/`: best incumbent solutions found for all instances (see [`results/solutions/README.md`](results/solutions/README.md) for format details).
+
 
 ## 🛠️ Requirements
 
