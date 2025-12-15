@@ -17,7 +17,7 @@ This repository contains the implementation and experimental data for the branch
 ## 📁 Repository structure
 
 ### [`branch-and-price/`](branch-and-price/)
-SCIP-based branch-and-price solver implementation. Contains source code, build system, parameter sets, and comprehensive documentation.
+SCIP-based branch-and-price solver implementation. Contains source code, documentation, and comprehensive documentation.
 
 See [`branch-and-price/README.md`](branch-and-price/README.md) for detailed usage instructions, parameter descriptions, and output formats.
 
