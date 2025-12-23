@@ -17,7 +17,7 @@ This repository contains the implementation and experimental data for the branch
 ## 📁 Repository structure
 
 ### [`branch-and-price/`](branch-and-price/)
-SCIP-based branch-and-price solver implementation. Contains source code, computational results and comprehensive documentation.
+SCIP-based branch-and-price solver implementation. Contains source code, computational results and documentation.
 
 See [`branch-and-price/README.md`](branch-and-price/README.md) for detailed usage instructions, parameter descriptions, and output formats.
 
@@ -76,7 +76,7 @@ If you use this code in your research, please cite:
 @article{ciccarelli2024branch,
   title={Branch-and-price strikes back for the k-vertex cut problem},
   author={Ciccarelli, Fabio and Furini, Fabio and Hojny, Christopher and L{\"u}bbecke, Marco},
-  year={2024}
+  year={2025}
 }
 ```
 
