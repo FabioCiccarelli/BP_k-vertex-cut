@@ -3,13 +3,8 @@
 SCIP-based branch-and-price solver for the k-vertex-cut problem. 
 
 ## Quick start
-- Run with a DIMACS format graph: `./bin/kvertexcut -f instance.dimacs` (loads `scip.set` by default).
+- Run with a DIMACS format graph: `./bin/kvertexcut -f instance.dimacs` (loads default SCIP settings).
 - Load custom SCIP settings: `./bin/kvertexcut -f instance.dimacs -s params/params_k10.set`.
-
-## Inputs
-- **DIMACS graph file** (`.dimacs`): problem line `p edge nnodes nedges`, edges `e u v` (1-indexed nodes).
-- **Optional weights**: if `options/weighted = 1`, a companion file `instance.dimacs.w` with one vertex weight per line (node order) is required. Defaults to weight 1 otherwise.
-- **Problem parameter**: `params/k` (int, k >= 1), the target minimum number of vertex clusters in the residual graph.
 
 ## Parameters
 
@@ -20,7 +15,7 @@ SCIP-based branch-and-price solver for the k-vertex-cut problem.
 
 ### Problem configuration
 - `params/k` (int, default: 2): value of k for the k-vertex-cut problem.
-- `options/weighted` (bool, default: 0): enable weighted variant (requires `.w` file).
+- `options/weighted` (bool, default: 0): enable weighted variant. If `options/weighted = 1`, a companion file `instance.dimacs.w` with one vertex weight per line (vertex order) is required. Defaults to unit weights otherwise.
 
 ### Algorithm options
 - `options/symmetrymethod` (int, default: 2): symmetry handling method.
@@ -38,7 +33,7 @@ SCIP-based branch-and-price solver for the k-vertex-cut problem.
 - `options/connectivity/warmstart` (bool, default: 1): connectivity-based warm start.
 - `options/ILPwarmstart` (bool, default: 0): ILP warm start.
 
-### Solve mode
+### Other options
 - `options/solveLP` (bool, default: 0): solve LP relaxation only (sets `limits/nodes = 1` and relaxes the integrality on binary variables).
 - `options/plot` (bool, default: 0): enable PNG plot of the solution.
 
@@ -81,7 +76,7 @@ Tab-separated file `<output/results>/<instance>_k<k>.res` (appends each run). Co
 ### Solution file (`.sol`)
 File `<output/solution>/<instance>_k<k>.sol` with solution details:
 - **Line 1**: total cut cost (sum of costs of vertices in the cut).
-- **Line 2**: space-separated list of vertex indices (1-indexed) in the cut.
+- **Line 2**: space-separated list of vertex indices (0-indexed) in the cut.
 
 Example:
 ```
@@ -94,7 +89,7 @@ If `options/plot = 1`, generates `<output/plot>/<instance>_k<k>.png` visualizing
 - **Green nodes**: vertices not in the cut, grouped by connected component.
 - **Red nodes**: vertices in the cut (separator).
 - **Layout**: largest component at center, smaller components orbiting around, cut vertices in a grid at the top.
-- **Edges**: solid black (between non-cut nodes), dashed gray (incident to cut nodes).
+- **Edges**: solid black (between non-cut nodes).
 
 Requires Graphviz. A `.dot` file is generated in any case if `options/plot = 0`.
 
