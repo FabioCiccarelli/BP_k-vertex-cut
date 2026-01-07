@@ -7,7 +7,7 @@ This directory contains the best incumbent solutions found by our branch-and-pri
 ### `unweighted/`
 Contains solution files for unweighted graph instances.
 ### `weighted/`
-Contains solution files for weighted graph instances (will be added soon).
+Contains solution files for weighted graph instances.
 
 ## Solution File Format
 
