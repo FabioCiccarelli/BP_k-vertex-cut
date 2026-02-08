@@ -73,7 +73,7 @@ This software is released for **academic and research purposes only**. See [LICE
 If you use this code in your research, please cite:
 
 ```bibtex
-@article{ciccarelli2024branch,
+@article{ciccarelli2025branch,
   title={Branch-and-price strikes back for the k-vertex cut problem},
   author={Ciccarelli, Fabio and Furini, Fabio and Hojny, Christopher and L{\"u}bbecke, Marco},
   year={2025}
