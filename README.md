@@ -73,10 +73,14 @@ This software is released for **academic and research purposes only**. See [LICE
 If you use this code in your research, please cite:
 
 ```bibtex
-@article{ciccarelli2025branch,
-  title={Branch-and-price strikes back for the k-vertex cut problem},
-  author={Ciccarelli, Fabio and Furini, Fabio and Hojny, Christopher and L{\"u}bbecke, Marco},
-  year={2025}
+@misc{ciccarelli2026branchandpricestrikeskvertexcut,
+      title={Branch-and-price strikes back for the k-vertex cut problem}, 
+      author={Fabio Ciccarelli and Fabio Furini and Christopher Hojny and Marco Lübbecke},
+      year={2026},
+      eprint={2602.04984},
+      archivePrefix={arXiv},
+      primaryClass={math.OC},
+      url={https://arxiv.org/abs/2602.04984}, 
 }
 ```
 
