@@ -12,6 +12,8 @@ This repository contains the implementation and experimental data for the branch
 
 > **Branch-and-price strikes back for the k-vertex cut problem**  
 > F. Ciccarelli, F. Furini, C. Hojny, and M. Lübbecke
+> >
+> 📄 [**Read the article**](https://arxiv.org/abs/2602.04984)
 
 
 ## 📁 Repository structure
