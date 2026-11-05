@@ -15,6 +15,7 @@ SCIPDIR         =       $(SCIP_PATH)
 GUROBIDIR       =       $(GUROBI_HOME)
 GUROBILIBDIR    =       $(GUROBIDIR)/lib
 GUROBIINCDIR    =       $(GUROBIDIR)/include
+GUROBILIB       =       $(patsubst lib%.so,%,$(notdir $(firstword $(wildcard $(GUROBILIBDIR)/libgurobi[0-9][0-9][0-9].so))))
 
 #-----------------------------------------------------------------------------
 # include default project Makefile from SCIP (need to do this twice, once to
@@ -61,7 +62,8 @@ CXXMAINOBJ	=	main.o \
 			min_cut_pricer.o \
 			plugins.o \
 			custom_compute_symmetry.o \
-			prop_problemsymmetry.o 
+			prop_problemsymmetry.o \
+			cons_cutcheck.o
 
 MAINSRC		=	$(addprefix $(SRCDIR)/,$(CMAINOBJ:.o=.c))
 MAINSRC		+=	$(addprefix $(SRCDIR)/,$(CXXMAINOBJ:.o=.cpp))
@@ -78,7 +80,10 @@ MAINOBJFILES	+=	$(addprefix $(OBJDIR)/,$(CXXMAINOBJ))
 
 FLAGS		+=	-I$(GUROBIINCDIR)
 CXXFLAGS	+=	-std=c++17
-LDFLAGS		+=	-L$(GUROBILIBDIR) -lgurobi_c++ -lgurobi120 -lm -Wl,-rpath,$(GUROBILIBDIR)
+LDFLAGS		+=	-L$(GUROBILIBDIR) -lgurobi_c++ -l$(GUROBILIB) -lm -Wl,-rpath,$(GUROBILIBDIR)
+
+# SoPlex of the SCIP Optimization Suite, in case the links in $(SCIPDIR)/lib are stale
+LDFLAGS		+=	-L$(SCIPDIR)/../soplex/lib
 
 #-----------------------------------------------------------------------------
 # Rules

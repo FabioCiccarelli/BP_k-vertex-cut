@@ -3,3 +3,8 @@ branch-and-price/obj/*
 .vscode/*
 *~
 
+
+# local working notes
+FIX_RELAXED_COVER.md
+paper/
+outputs/

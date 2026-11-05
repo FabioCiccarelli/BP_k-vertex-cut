@@ -72,6 +72,9 @@ Tab-separated file `<output/results>/<instance>_k<k>.res` (appends each run). Co
 28. columns generated via Farkas pricing
 29. maximum branch-and-bound tree depth
 30. dual bound at root node
+31. solutions rejected because they are not k-vertex cuts
+32. activations of the fallback switching coverage constraints to equalities
+33. coverage constraints switched to equalities
 
 ### Solution file (`.sol`)
 File `<output/solution>/<instance>_k<k>.sol` with solution details:

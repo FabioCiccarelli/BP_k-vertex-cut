@@ -18,6 +18,7 @@
 #include "pricer_kvertexcut.h"
 #include "reader_kvertexcut.h"
 #include "probdata_kvertexcut.h"
+#include "cons_cutcheck.h"
 #include "plugins.h"
 
 using namespace std;
@@ -61,7 +62,10 @@ SCIP_RETCODE runShell(
 
    /* include k-vertex cut pricer */
    SCIP_CALL( SCIPincludePricerKvertexcut(scip) );
-   
+
+   /* include constraint handler checking that integral solutions are k-vertex cuts */
+   SCIP_CALL( SCIPincludeConshdlrCutcheck(scip) );
+
    /* include SCIP plugins */
    SCIP_CALL( SCIPincludePlugins(scip) );
 
@@ -282,7 +286,15 @@ SCIP_RETCODE runShell(
          preFixedWeight += orig_graph->vertex_weights[v];
       }
    }
-   
+
+   if (SCIPgetBestSol(scip) != NULL && countConnectedComponents(*orig_graph, cut) < k_val) {
+      cout << "\nWARNING: the best solution is not a " << k_val << "-vertex cut" << endl;
+   }
+
+   cout << "\nCut check: " << SCIPconshdlrCutcheckGetNRejected(scip) << " rejected solutions, "
+        << SCIPconshdlrCutcheckGetNFallbacks(scip) << " fallback activations, "
+        << SCIPconshdlrCutcheckGetNSwitchedRows(scip) << " coverage constraints switched to equality" << endl;
+
    ofstream resultsFile(resultsFileName, ios::app);
    if (resultsFile.is_open())
    {
@@ -328,6 +340,9 @@ SCIP_RETCODE runShell(
                   << SCIPpricerKvertexcutGetNGenFarkasCols(scip) << "\t"
                   << SCIPgetMaxTotalDepth(scip) << "\t"
                   << SCIPgetDualboundRoot(scip) << "\t"
+                  << SCIPconshdlrCutcheckGetNRejected(scip) << "\t"
+                  << SCIPconshdlrCutcheckGetNFallbacks(scip) << "\t"
+                  << SCIPconshdlrCutcheckGetNSwitchedRows(scip) << "\t"
                   << endl;
       resultsFile.close();
 
@@ -345,7 +360,7 @@ SCIP_RETCODE runShell(
       solFile << tot_cut_cost << "\n";
       for (int v = 0; v < orig_graph->nnodes; ++v) {
          if (cut[v]) {
-            solFile << v+1 << " ";
+            solFile << v << " ";
          }
       }
       solFile << "\n";

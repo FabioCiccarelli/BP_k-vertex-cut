@@ -1049,6 +1049,9 @@ SCIP_RETCODE SCIPprobdataCreate(
                   << -1 << "\t"
                   << -1 << "\t"
                   << -1 << "\t"
+                  << 0 << "\t"
+                  << 0 << "\t"
+                  << 0 << "\t"
                   << endl;
       resultsFile.close();
       }
