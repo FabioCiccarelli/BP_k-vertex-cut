@@ -1,6 +1,5 @@
 # Branch-and-Price for the k-Vertex Cut Problem
-[![DOI](https://zenodo.org/badge/1069071398.svg)](https://doi.org/10.5281/zenodo.17897865)
-
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.17897865-blue)](https://doi.org/10.5281/zenodo.17897865)
 
 
 <div align="center">
@@ -12,6 +11,8 @@ This repository contains the implementation and experimental data for the branch
 
 > **Branch-and-price strikes back for the k-vertex cut problem**  
 > F. Ciccarelli, F. Furini, C. Hojny, and M. Lübbecke
+> >
+> 📄 [**Read the article**](https://arxiv.org/abs/2602.04984)
 
 
 ## 📁 Repository structure
